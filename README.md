@@ -2,7 +2,7 @@
 
 Built for RowdyHacks XII. TrueIris is a personal context intelligence desktop application: physiological observations, computer activity, temporal history, and evidence-grounded conversation.
 
-The master instructions live in [TRUEIRIS_SPEC.md](TRUEIRIS_SPEC.md). The foundation, Feature 2 sensor integration, and Feature 3 live view are implemented: user-started Presage camera sensing, validated pulse/respiration/HRV/talking events, confidence gates, and an explicitly labeled mock provider. The live view adds per-metric confidence, responsive signal states, a sensing-session clock, and explicitly manual activity selection. Database, OS context, AI, and voice integrations remain planned. See the [architecture](docs/ARCHITECTURE.md).
+The master instructions live in [TRUEIRIS_SPEC.md](TRUEIRIS_SPEC.md). The foundation, Feature 2 sensor integration, Feature 3 live view, and Feature 4 Tiger Data ingestion are implemented: user-started Presage camera sensing, validated pulse/respiration/HRV/talking events, confidence gates, and an explicitly labeled mock provider. The live view adds per-metric confidence, responsive signal states, a sensing-session clock, and explicitly manual activity selection. Opt-in authenticated persistence adds bounded retries, duplicate protection, Timescale measurements, 30-second epochs, and export/delete controls. OS context, AI, and voice integrations remain planned. See the [architecture](docs/ARCHITECTURE.md).
 
 ## Architecture
 
@@ -10,8 +10,8 @@ The master instructions live in [TRUEIRIS_SPEC.md](TRUEIRIS_SPEC.md). The founda
 flowchart LR
   UI[Electron / React] --> PRELOAD[Secure preload]
   PRELOAD --> MAIN[Electron main]
-  MAIN --> API[Fastify API]
-  API -. planned .-> DB[Tiger Data / TimescaleDB / vectors]
+  MAIN -->|health + opt-in private batches| API[Fastify API]
+  API --> DB[Tiger Data / TimescaleDB measurements + epochs]
   API -. planned .-> AI[Gemini tools and reasoning]
   API -. planned .-> VOICE[ElevenLabs voice]
   SENSOR[Presage / native utility process] --> MAIN
@@ -21,7 +21,7 @@ See [initial repo analysis](docs/REPO_ANALYSIS.md), [architecture and data model
 
 ## Requirements and setup
 
-Use Node.js 24 LTS (or a newer compatible version), pnpm **12.8.1**, Git, and a desktop graphical session. Electron 44 requires macOS 13 or later on Mac. Tested on macOS Apple Silicon. Docker is not needed for the foundation; database and Vultr work will add it later.
+Use Node.js 24 LTS (or a newer compatible version), pnpm **12.8.1**, Git, and a desktop graphical session. Electron 44 requires macOS 13 or later on Mac. Tested on macOS Apple Silicon. A managed Tiger Data service needs no local Docker. CI uses an isolated Timescale container; Vultr deployment remains planned.
 
 ```bash
 npm install --global pnpm@12.8.1
@@ -47,20 +47,23 @@ The root `.env` is loaded by main/backend processes even when launched through a
 | `pnpm test`                         | Unit and in-process API tests                                                                         |
 | `pnpm build`                        | Bundle desktop main/preload/renderer and API                                                          |
 | `pnpm test:integration`             | Launch built API and Electron; check routes, bridge isolation, connection/failure states; build first |
+| `pnpm db:migrate`                   | Apply versioned Timescale schema explicitly                                                           |
+| `pnpm test:database`                | Verify real Timescale SQL with isolated fixture owners                                                |
+| `pnpm test:persistence`             | Verify built desktop → authenticated API → real database with a mock session                          |
 | `pnpm check`                        | Format check, lint, type checking, unit tests, and builds                                             |
 | `pnpm start:api`                    | Run the built API                                                                                     |
 | `pnpm start:desktop`                | Run the built Electron application                                                                    |
 
-For production-output verification, run `pnpm build`, then `pnpm start:api` and `pnpm start:desktop` in separate terminals. The build produces runnable bundles, not signed installers. Database migration and demo seeding commands will be added with their features.
+For production-output verification, run `pnpm build`, then `pnpm start:api` and `pnpm start:desktop` in separate terminals. The build produces runnable bundles, not signed installers. Run `pnpm db:migrate` explicitly before enabling storage. Demo seeding remains planned.
 
-`GET http://127.0.0.1:3001/health` reports API liveness and explicit unimplemented integrations. An API connection is not proof that sponsor services are connected. Stopping the API updates the desktop connection indicator automatically.
+`GET http://127.0.0.1:3001/health` reports API liveness and verified database readiness; reasoning/voice report unimplemented. An API connection is not proof that sponsor services are connected. Stopping the API updates the desktop connection indicator automatically.
 
 ## Sponsor integration setup
 
 | Technology           | Planned role                                        | Setup / current state                                                                                                                                                                                                          |
 | -------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Presage SmartSpectra | Native physiological perception                     | Implemented with SDK 3.4.0 in a main-owned utility process. Set `PRESAGE_API_KEY`; metric availability depends on plan and signal. [Setup guide](docs/PRESAGE_SETUP.md).                                                       |
-| Tiger Data           | Temporal measurements, aggregates, semantic storage | Provision PostgreSQL with TimescaleDB and vector support; set `DATABASE_URL` with the provider's TLS requirements. [Tiger docs](https://www.tigerdata.com/docs). No migrations or connection yet.                              |
+| Tiger Data           | Temporal measurements, aggregates, semantic storage | Implemented: set `DATABASE_URL` and private `TRUEIRIS_INGEST_TOKEN`, run `pnpm db:migrate`, then opt into saving. [Setup, TLS, controls and verification](docs/TIGER_DATA_SETUP.md). Vector storage remains planned.           |
 | Gemini               | Explicit tool calls, grounded answers, embeddings   | Obtain `GEMINI_API_KEY` from Google AI Studio. [Function-calling docs](https://ai.google.dev/gemini-api/docs/function-calling). Model selection and agent arrive later.                                                        |
 | ElevenLabs           | Realtime STT and streaming TTS                      | Set `ELEVENLABS_API_KEY` and `ELEVENLABS_VOICE_ID`. [Realtime token docs](https://elevenlabs.io/docs/eleven-api/guides/how-to/speech-to-text/realtime/client-side-streaming). Token issuance and audio streaming arrive later. |
 | Vultr                | Dockerized API orchestration                        | `VULTR_DEPLOYMENT_ENV` accepts local/staging/production. Remote deployment needs TLS, authentication, scoped queries, container configuration, and service checks; no deployment has occurred.                                 |
@@ -71,7 +74,7 @@ Keep API secrets in `.env` or runtime secret configuration. They are ignored by 
 
 `TRUEIRIS_DEMO_MODE` defaults to `false`; it is strictly parsed. Setting it to `true` currently records the requested configuration only. Seeded history, sensor fallback, and presentation mode are future work. There is no simulated history in this milestone.
 
-Camera sensing requires an explicit start and operating-system permission. Its status and Stop control remain visible across routes. Frames stay in the native worker; TrueIris retains only the current normalized reading in memory. Presage automatically uploads derived vitals summaries to its insight service; optional diagnostic telemetry is disabled. This disclosure appears before camera start. Desktop context, screenshots, and voice remain inactive. The API binds to loopback and receives no observations yet. Future screen understanding requires explicit opt-in and transient image processing; all data sources retain real/mock/seed provenance. See [privacy inventory](docs/PRIVACY.md).
+Camera sensing requires an explicit start and operating-system permission. Its status and Stop control remain visible across routes. Frames stay in the native worker. Saving starts off on each launch. Enabling it in Settings persists labeled measurements and epochs; Stop saving, export and delete controls are available. Presage automatically uploads derived vitals summaries to its insight service; optional diagnostic telemetry is disabled. This disclosure appears before camera start. Desktop context, screenshots, and voice remain inactive. The API binds to loopback and requires a scoped private token for observations/export/delete. Future screen understanding requires explicit opt-in and transient image processing; all data sources retain real/mock/seed provenance. See [privacy inventory](docs/PRIVACY.md).
 
 ## Troubleshooting
 
@@ -82,7 +85,7 @@ Camera sensing requires an explicit start and operating-system permission. Its s
 - **Blank desktop:** inspect terminal lifecycle logs, run `pnpm check`, and confirm the preload and renderer bundles exist in `apps/desktop/out`. Dev uses port 5173 with strict conflict detection.
 - **Linux CI without a display:** run integration tests with `xvfb-run --auto-servernum pnpm test:integration`. CI may need `ELECTRON_DISABLE_SANDBOX=1` only for the automated launch environment; desktop security preferences remain enabled.
 - **No pulse:** check the visible sensor issue and [Presage troubleshooting](docs/PRESAGE_SETUP.md). Values are withheld when the signal is missing, unstable, low-confidence, or affected by motion/talking; mock sensing must be selected explicitly.
-- **No voice/history:** these integrations are still planned; follow the roadmap.
+- **No saved history:** check database readiness, migrations and the saving control in Settings. See [Tiger Data troubleshooting](docs/TIGER_DATA_SETUP.md). Timeline presentation and voice remain planned.
 
 ## Feature workflow
 

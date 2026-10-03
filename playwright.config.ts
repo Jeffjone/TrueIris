@@ -12,6 +12,8 @@ export default defineConfig({
       TRUEIRIS_API_HOST: '127.0.0.1',
       TRUEIRIS_API_PORT: '3099',
       LOG_LEVEL: 'silent',
+      DATABASE_URL: '',
+      TRUEIRIS_INGEST_TOKEN: '',
     },
   },
 });

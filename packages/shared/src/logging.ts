@@ -8,6 +8,7 @@ export const loggerOptions = (level: string) => ({
       'token',
       'password',
       'DATABASE_URL',
+      'TRUEIRIS_INGEST_TOKEN',
       'PRESAGE_API_KEY',
       'GEMINI_API_KEY',
       'ELEVENLABS_API_KEY',

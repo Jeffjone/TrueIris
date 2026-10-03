@@ -47,6 +47,12 @@ const envSchema = z.object({
   GEMINI_API_KEY: optionalSecret,
   ELEVENLABS_API_KEY: optionalSecret,
   ELEVENLABS_VOICE_ID: optionalSecret,
+  TRUEIRIS_INGEST_TOKEN: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.string().min(32).max(256).optional(),
+  ),
+  TRUEIRIS_USER_ID: z.uuid().default('00000000-0000-4000-8000-000000000001'),
+  DATABASE_CA_FILE: optionalSecret,
   DATABASE_URL: z.preprocess(
     (value) => (value === '' ? undefined : value),
     z

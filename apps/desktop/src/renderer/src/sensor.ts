@@ -113,6 +113,9 @@ const initial: SensorSnapshot = {
 export function useSensor() {
   const [snapshot, setSnapshot] = useState<SensorSnapshot>(initial);
   const [available, setAvailable] = useState(false);
+  // Keep the user's provider choice with the session controls across route mounts.
+  const [selectedProvider, selectProvider] =
+    useState<SensorProviderKind | null>(null);
   useEffect(() => {
     const bridge = window.trueiris;
     if (!bridge) return;
@@ -162,6 +165,15 @@ export function useSensor() {
       }));
     }
   };
-  return { snapshot, available, start, stop };
+  return {
+    snapshot,
+    available,
+    start,
+    stop,
+    provider: ['starting', 'running', 'stopping'].includes(snapshot.phase)
+      ? snapshot.provider
+      : (selectedProvider ?? snapshot.provider),
+    selectProvider,
+  };
 }
 export type SensorControls = ReturnType<typeof useSensor>;

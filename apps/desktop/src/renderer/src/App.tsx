@@ -2,6 +2,12 @@ import { useEffect, useState } from 'react';
 import { useSensor, sensorLabel, type SensorControls } from './sensor';
 import { LiveView } from './live/LiveView';
 import type { Activity } from './live/presentation';
+import {
+  StoragePanel,
+  useStorage,
+  storageLabel,
+  type StorageControls,
+} from './components/StoragePanel';
 import { SensorPanel } from './components/SensorPanel';
 import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
 import type { DesktopStatus } from '@trueiris/schemas';
@@ -76,9 +82,11 @@ function EmptyPage({
 function Settings({
   status,
   sensor,
+  storage,
 }: {
   status: DesktopStatus | null;
   sensor: SensorControls;
+  storage: StorageControls;
 }) {
   return (
     <>
@@ -102,16 +110,13 @@ function Settings({
           </div>
         ))}
         <div className="settings-row">
-          <span>Data retention</span>
-          <span>No observations stored</span>
-        </div>
-        <div className="settings-row">
           <span>Demo configuration</span>
           <span>
             {status?.demoMode ? 'Requested · fallback not implemented' : 'Off'}
           </span>
         </div>
       </section>
+      <StoragePanel storage={storage} />
       <section className="settings-surface">
         <h2>Connection status</h2>
         <div className="settings-row">
@@ -120,7 +125,15 @@ function Settings({
             {status?.api === 'connected' ? 'Connected' : 'Unavailable'}
           </span>
         </div>
-        {['Tiger Data', 'Gemini', 'ElevenLabs'].map((label) => (
+        <div className="settings-row">
+          <span>Tiger Data</span>
+          <span>
+            {status?.integrations?.database === 'ready'
+              ? 'Connected'
+              : 'Unavailable'}
+          </span>
+        </div>
+        {['Gemini', 'ElevenLabs'].map((label) => (
           <div className="settings-row" key={label}>
             <span>{label}</span>
             <span>Not integrated</span>
@@ -137,6 +150,7 @@ function Settings({
 export function App() {
   const { status, checked } = useStatus();
   const sensor = useSensor();
+  const storage = useStorage();
   const [activity, setActivity] = useState<Activity>('');
   return (
     <div className="app-shell">
@@ -169,6 +183,9 @@ export function App() {
                 ? 'API connected'
                 : 'API unavailable'}
           </span>
+          <div className="global-storage" data-testid="global-storage-status">
+            {storageLabel(storage.status)}
+          </div>
           <div className="global-sensor">
             <span data-testid="global-capture-status">
               {sensorLabel(sensor.snapshot)}
@@ -238,7 +255,9 @@ export function App() {
           />
           <Route
             path="/settings"
-            element={<Settings status={status} sensor={sensor} />}
+            element={
+              <Settings status={status} sensor={sensor} storage={storage} />
+            }
           />
           <Route path="*" element={<Navigate to="/live" replace />} />
         </Routes>

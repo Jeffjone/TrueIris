@@ -15,6 +15,8 @@ describe('environment validation', () => {
   });
   it.each([
     { TRUEIRIS_API_PORT: '0' },
+    { TRUEIRIS_INGEST_TOKEN: 'short' },
+    { TRUEIRIS_USER_ID: 'invalid' },
     { TRUEIRIS_API_PORT: '65536' },
     { TRUEIRIS_DEMO_MODE: 'yes' },
     { TRUEIRIS_API_URL: 'file:///tmp/test' },

@@ -1,5 +1,6 @@
 import {
   app,
+  dialog,
   BrowserWindow,
   ipcMain,
   session,
@@ -9,7 +10,11 @@ import {
 } from 'electron';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { STATUS_CHANNEL, SENSOR_CHANNELS } from '@trueiris/shared';
+import {
+  STATUS_CHANNEL,
+  SENSOR_CHANNELS,
+  STORAGE_CHANNELS,
+} from '@trueiris/shared';
 import {
   loadWorkspaceEnvironment,
   parseEnvironment,
@@ -18,6 +23,12 @@ import { createLogger } from '@trueiris/shared/logging';
 import { getDesktopStatus } from './status';
 import { sensorStartSchema, type SensorSnapshot } from '@trueiris/schemas';
 import { SensorController, SensorStartError } from './sensor/controller';
+import {
+  MeasurementQueue,
+  createBatchSender,
+  storageConfigured,
+} from './storage/queue';
+import { exportMeasurements } from './storage/files';
 import { MockSensorProvider } from './sensor/mock';
 import { PresageSensorProvider } from './sensor/presage';
 
@@ -27,6 +38,13 @@ const logger = createLogger('trueiris-desktop', env.LOG_LEVEL);
 const directory = dirname(fileURLToPath(import.meta.url));
 let mainWindow: BrowserWindow | null = null;
 let sensor: SensorController;
+const storage = new MeasurementQueue(
+  storageConfigured(env.TRUEIRIS_API_URL, env.TRUEIRIS_INGEST_TOKEN),
+  createBatchSender(env.TRUEIRIS_API_URL, env.TRUEIRIS_INGEST_TOKEN),
+);
+let managingData = false;
+let exportAbort: AbortController | null = null;
+let exportOperation: Promise<void> | null = null;
 let lastPhase: SensorSnapshot['phase'] = 'off';
 function assertTrusted(event: IpcMainInvokeEvent) {
   if (
@@ -150,6 +168,7 @@ void app
         return new PresageSensorProvider(env.PRESAGE_API_KEY, spawnSensor);
       },
       (snapshot) => {
+        storage.observe(snapshot);
         if (snapshot.phase !== lastPhase) {
           logger.info({
             event:
@@ -187,6 +206,7 @@ void app
     });
     ipcMain.handle(SENSOR_CHANNELS.start, (event, input: unknown) => {
       assertTrusted(event);
+      if (managingData) throw new Error('Data action in progress');
       const result = sensorStartSchema.safeParse(input);
       if (!result.success) throw new Error('Invalid sensor start request');
       return sensor.start(result.data.provider);
@@ -194,6 +214,78 @@ void app
     ipcMain.handle(SENSOR_CHANNELS.stop, (event) => {
       assertTrusted(event);
       return sensor.stop();
+    });
+    ipcMain.handle(STORAGE_CHANNELS.get, (event) => {
+      assertTrusted(event);
+      return storage.get();
+    });
+    ipcMain.handle(STORAGE_CHANNELS.enable, (event, enabled: unknown) => {
+      assertTrusted(event);
+      if (typeof enabled !== 'boolean' || managingData)
+        throw new Error('Invalid storage action');
+      return storage.setEnabled(enabled);
+    });
+    ipcMain.handle(STORAGE_CHANNELS.export, async (event) => {
+      assertTrusted(event);
+      if (managingData || !mainWindow || !storage.get().configured)
+        return 'failed';
+      managingData = true;
+      try {
+        const selection = await dialog.showSaveDialog(mainWindow, {
+          title: 'Export measurements',
+          defaultPath: 'trueiris-measurements.jsonl',
+          filters: [{ name: 'JSON Lines', extensions: ['jsonl'] }],
+        });
+        if (selection.canceled || !selection.filePath) return 'cancelled';
+        await storage.setEnabled(false);
+        exportAbort = new AbortController();
+        exportOperation = exportMeasurements(
+          env.TRUEIRIS_API_URL,
+          env.TRUEIRIS_INGEST_TOKEN!,
+          selection.filePath,
+          { signal: exportAbort.signal },
+        );
+        await exportOperation;
+        return 'saved';
+      } catch {
+        return 'failed';
+      } finally {
+        exportAbort = null;
+        exportOperation = null;
+        managingData = false;
+      }
+    });
+    ipcMain.handle(STORAGE_CHANNELS.delete, async (event) => {
+      assertTrusted(event);
+      if (managingData || !mainWindow || !storage.get().configured)
+        return 'failed';
+      managingData = true;
+      try {
+        const confirmation = await dialog.showMessageBox(mainWindow, {
+          type: 'warning',
+          title: 'Delete measurement history?',
+          message: 'Delete all your saved measurements and aggregates?',
+          detail:
+            'This also stops sensing and saving. Deletion cannot be undone.',
+          buttons: ['Cancel', 'Delete history'],
+          defaultId: 0,
+          cancelId: 0,
+        });
+        if (confirmation.response !== 1) return 'cancelled';
+        await sensor.stop();
+        await storage.setEnabled(false);
+        const response = await fetch(new URL('/data', env.TRUEIRIS_API_URL), {
+          method: 'DELETE',
+          headers: { authorization: `Bearer ${env.TRUEIRIS_INGEST_TOKEN!}` },
+          redirect: 'error',
+          signal: AbortSignal.timeout(10_000),
+        });
+        return response.status === 204 ? 'deleted' : 'failed';
+      } catch {
+        return 'failed';
+      } finally {
+        managingData = false;
+      }
     });
     createWindow();
     logger.info({ event: 'desktop_started' });
@@ -215,5 +307,11 @@ app.on('before-quit', (event) => {
   if (quitting || !sensor) return;
   event.preventDefault();
   quitting = true;
-  void sensor.dispose().finally(() => app.quit());
+  exportAbort?.abort();
+  void sensor
+    .dispose()
+    .then(async () => {
+      await Promise.allSettled([storage.dispose(), exportOperation]);
+    })
+    .finally(() => app.quit());
 });

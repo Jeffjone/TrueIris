@@ -1,5 +1,7 @@
 # Initial repository analysis
 
+This records the initial repository/foundation snapshot. See [README](../README.md) and [milestones](IMPLEMENTATION_PLAN.md) for current implemented features and integration status.
+
 Analyzed on October 3, 2026 against `origin/main` at `6406c392c69c31bb6dd7e6adf73c7d71264302d3`.
 
 ## Starting state

@@ -683,3 +683,33 @@ h2 {
     padding-top: 18px;
   }
 }
+
+.global-storage {
+  margin-top: 12px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.settings-row button {
+  font: inherit;
+  font-size: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: #2e503b;
+  background: #e5ebdf;
+  flex-shrink: 0;
+}
+.settings-row button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.settings-row button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+@media (max-width: 600px) {
+  .settings-row {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+}

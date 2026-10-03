@@ -7,6 +7,17 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    services:
+      timescale:
+        image: timescale/timescaledb:2.19.3-pg17
+        env:
+          POSTGRES_PASSWORD: trueiris-ci-only
+          POSTGRES_DB: trueiris_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d trueiris_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -16,6 +27,13 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
+      - run: pnpm test:database
+        env:
+          DATABASE_URL: postgresql://postgres:trueiris-ci-only@127.0.0.1:5432/trueiris_test
+      - run: xvfb-run --auto-servernum pnpm test:persistence
+        env:
+          ELECTRON_DISABLE_SANDBOX: '1'
+          DATABASE_URL: postgresql://postgres:trueiris-ci-only@127.0.0.1:5432/trueiris_test
       - run: xvfb-run --auto-servernum pnpm test:integration
         env:
           ELECTRON_DISABLE_SANDBOX: '1'

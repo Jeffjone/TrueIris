@@ -4,6 +4,12 @@ export default defineConfig({
   format: ['esm'],
   platform: 'node',
   target: 'node24',
-  noExternal: ['@trueiris/shared', '@trueiris/schemas'],
+  noExternal: [
+    '@trueiris/shared',
+    '@trueiris/schemas',
+    '@trueiris/db',
+    '@trueiris/analytics',
+  ],
+  external: ['pg'],
   clean: true,
 });

@@ -20,7 +20,7 @@ flowchart LR
 
 The renderer has no Node integration and no API credentials. The preload bundles its dependencies into CommonJS because sandboxed Electron preloads cannot use a normal Node module loader. It exposes named status, sensor get/start/stop, and validated event subscription operations rather than generic IPC. Main rejects calls from other web contents and subframes. External navigation, new windows, webviews, and renderer permissions are denied. Main requests native camera permission only for a user-started Presage session. A local CSP limits renderer resources. Production uses local HTML and hash routing; development uses electron-vite HMR.
 
-API configuration and secrets stay in the main/backend processes. Only validated, nonsecret status and normalized readings reach React. `/health` reports process liveness, not database or sponsor availability; those dependencies explicitly report `not_implemented`. Main verifies the response and reports `unavailable` after failed requests, invalid payloads, redirects, or a 2.5-second timeout. UI rechecks every five seconds without crashing when the API is stopped.
+API configuration and secrets stay in the main/backend processes. Only validated, nonsecret status and normalized readings reach React. `/health` reports process liveness plus a verified Timescale migration/hypertable check; database is `ready` or `unavailable`, while reasoning and voice remain `not_implemented`. Main verifies the response and reports `unavailable` after failed requests, invalid payloads, redirects, or a 2.5-second timeout. UI rechecks every five seconds without crashing when the API is stopped.
 
 ## Target evidence flow
 
@@ -45,7 +45,7 @@ flowchart TD
   ANSWER --> TTS[ElevenLabs streaming TTS]
 ```
 
-The sensor and transient live events are implemented. Persistence, context, analytics, memory, agent, and voice nodes remain planned.
+Sensor events, opt-in authenticated persistence and pure 30-second epoch analytics are implemented. Context, baselines, memory, agent and voice remain planned.
 
 ## Workspace ownership
 
@@ -57,9 +57,9 @@ The sensor and transient live events are implemented. Persistence, context, anal
 | `apps/api/src`                 | HTTP/WebSocket ingress, analytics orchestration, agents and tools      | shared, schemas; db/analytics when added    |
 | `packages/schemas`             | Runtime validation at trust boundaries                                 | Zod only                                    |
 | `packages/shared`              | Bridge/provider types, process-only configuration and logging subpaths | schemas, dotenv, Pino, Zod                  |
-| `packages/db` (planned)        | Parameterized SQL, scoped repositories, migration runner               | schemas; PostgreSQL client                  |
-| `packages/analytics` (planned) | Pure epoch and baseline calculations                                   | schemas; no UI or SDK imports               |
-| `migrations` (planned)         | Versioned PostgreSQL/Timescale/vector SQL                              | executed only by explicit migration command |
+| `packages/db`                  | Parameterized SQL, scoped repositories, migration runner               | schemas, analytics; PostgreSQL client       |
+| `packages/analytics`           | Pure epoch calculations; baselines deferred                            | schemas; no UI or SDK imports               |
+| `packages/db/src/migration.ts` | Versioned PostgreSQL/Timescale SQL; vector deferred                    | executed only by explicit migration command |
 | `docker` (planned)             | API image and Vultr deployment configuration                           | build output and runtime dependencies       |
 
 Shared workspace packages export TypeScript source and are bundled into application output. Type checking runs independently for every workspace. Runtime third-party dependencies remain declared by the applications. New packages and directories are created when they have executable responsibilities; there are no empty placeholder services.
@@ -86,7 +86,7 @@ Every observation and derived artifact carries source (`live`, `mock`, `demo_see
 
 Ingestion uses bounded batches, idempotent event identifiers, bounded retry with jitter, and visible connection status. A capped in-memory queue is the initial offline choice; overflow is reported as a gap, never silently turned into synthetic samples. Any later durable local queue requires explicit retention/deletion controls.
 
-## Planned database model
+## Database model and future additions
 
 | Table                 | Important columns / relationships                                                                             | Storage and indexes                                                                                   |
 | --------------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
@@ -102,7 +102,7 @@ Ingestion uses bounded batches, idempotent event identifiers, bounded retry with
 
 Use time-dimension columns in all hypertable unique constraints. Retain standard-table foreign keys for relational entities. Minute/15-minute/hourly/daily continuous aggregates are introduced only for demonstrated query needs, keeping metric counts and source separation. Activity summaries use epoch/context queries before introducing expensive materialization. Configure retention deliberately rather than enabling automatic loss of hackathon history.
 
-Embedding model and vector dimension are chosen together during semantic memory work and versioned in records. Scope similarity searches by user and selected source policy before returning evidence. Avoid mixing embeddings from different models. No schema migration has run yet.
+Embedding model and vector dimension are chosen together during semantic memory work and versioned in records. Scope similarity searches by user and selected source policy before returning evidence. Avoid mixing embeddings from different models. Version 1 schema and ingestion checks are available through the explicit migration/verification commands.
 
 ## Agent and voice
 
@@ -116,7 +116,7 @@ ElevenLabs STT uses a backend-issued single-use token where supported, with micr
 
 Electron stays local. A future Dockerized Fastify API and workers run on Vultr, with Tiger Cloud as managed storage. Start with one API process and in-process epoch/session jobs; add a separate worker only when reliability or workload requires it. TLS terminates at Caddy/Nginx. Secrets enter via runtime environment. Container health checks use process liveness; a separate readiness endpoint will reflect actual required dependencies.
 
-The current unauthenticated API binds to loopback and serves only non-sensitive health. **Remote observation/query/token endpoints require authentication, per-user authorization, rate limits, TLS, and bounded payloads before deployment.** No public ingestion or token endpoint exists yet. Database credentials never belong in the desktop renderer, and provider secret presence never proves provider health.
+The current API binds to loopback, exposes non-sensitive health, and authenticates storage routes with one private token bound to one server-owned user identity. **Remote observation/query/token endpoints require authentication, per-user authorization, rate limits, TLS, and bounded payloads before deployment.** Ingestion/export/delete routes are scoped, bounded and rate-limited; public deployment and multi-user identity remain deferred. Database credentials never belong in the desktop renderer, and provider secret presence never proves provider health.
 
 ## Privacy and observability
 
@@ -141,3 +141,9 @@ See [privacy inventory](PRIVACY.md). Logs use structured event names and avoid a
 - [Tiger Data documentation](https://www.tigerdata.com/docs)
 - [Gemini function calling](https://ai.google.dev/gemini-api/docs/function-calling)
 - [ElevenLabs client realtime STT](https://elevenlabs.io/docs/eleven-api/guides/how-to/speech-to-text/realtime/client-side-streaming)
+
+## Feature 4 persistence
+
+The main-owned bounded queue receives validated sensor snapshots, preserves provenance and serializes one canonical UTC observation per second. Saving is off until the user enables it in Settings. A stable event UUID survives retries; overflow and bounded retry exhaustion are visible. The worker and renderer do not receive the API token or database credentials.
+
+Authenticated API batches insert measurements and recalculate touched 30-second epochs in one user-serialized transaction. Session ownership/source/origin are immutable. Hypertable uniqueness includes time; a separate session-second constraint avoids render-rate duplicates. Epochs preserve per-metric counts, missing values, coverage and variance, and never combine sessions or datasets. User-row locking also serializes deletion; its retained watermark blocks late replay. Export streams paginated observations through a native save dialog. See [Tiger Data implementation and setup](TIGER_DATA_SETUP.md) for SQL, health, TLS, queue limits and tests.

@@ -21,6 +21,8 @@ for (const connected of [true, false]) {
         TRUEIRIS_DEMO_MODE: 'false',
         LOG_LEVEL: 'silent',
         PRESAGE_API_KEY: '',
+        TRUEIRIS_INGEST_TOKEN: '',
+        DATABASE_URL: '',
         TRUEIRIS_SENSOR_PROVIDER: 'presage',
         ELECTRON_RENDERER_URL: '',
       },
@@ -43,6 +45,10 @@ for (const connected of [true, false]) {
       expect(isolation).toEqual({
         bridgeKeys: [
           'getStatus',
+          'getStorage',
+          'setStorageEnabled',
+          'exportData',
+          'deleteData',
           'getSensor',
           'startSensor',
           'stopSensor',

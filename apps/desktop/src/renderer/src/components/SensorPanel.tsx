@@ -1,11 +1,8 @@
-import { useState } from 'react';
 import type { SensorProviderKind } from '@trueiris/schemas';
 import type { SensorControls } from '../sensor';
 
 export function SensorPanel({ sensor }: { sensor: SensorControls }) {
-  const [selected, setSelected] = useState<SensorProviderKind | null>(null);
-  const { snapshot, available } = sensor;
-  const provider = selected ?? snapshot.provider;
+  const { snapshot, available, provider, selectProvider } = sensor;
   const busy = ['starting', 'running', 'stopping'].includes(snapshot.phase);
   return (
     <section className="sensor-panel" aria-label="Sensor controls">
@@ -17,7 +14,7 @@ export function SensorPanel({ sensor }: { sensor: SensorControls }) {
             value={provider}
             disabled={busy}
             onChange={(event) =>
-              setSelected(event.target.value as SensorProviderKind)
+              selectProvider(event.target.value as SensorProviderKind)
             }
           >
             <option value="presage">Presage camera</option>
@@ -49,7 +46,7 @@ export function SensorPanel({ sensor }: { sensor: SensorControls }) {
       <p className="muted sensor-privacy">
         {provider === 'mock'
           ? 'Simulated readings for development. No camera or Presage connection is used.'
-          : 'Starting enables your camera. Presage processes frames on-device and sends derived vitals summaries to its insight service. TrueIris stores no frames or readings in this feature. Stop sensing at any time.'}
+          : 'Starting enables your camera. Presage processes frames on-device and sends derived vitals summaries to its insight service. TrueIris never stores camera frames. Readings are saved only when you enable saving in Settings. Stop sensing at any time.'}
       </p>
     </section>
   );
