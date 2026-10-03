@@ -20,6 +20,8 @@ for (const connected of [true, false]) {
           : 'http://127.0.0.1:1',
         TRUEIRIS_DEMO_MODE: 'false',
         LOG_LEVEL: 'silent',
+        PRESAGE_API_KEY: '',
+        TRUEIRIS_SENSOR_PROVIDER: 'presage',
         ELECTRON_RENDERER_URL: '',
       },
     });
@@ -39,7 +41,13 @@ for (const connected of [true, false]) {
         hasProcess: 'process' in window,
       }));
       expect(isolation).toEqual({
-        bridgeKeys: ['getStatus'],
+        bridgeKeys: [
+          'getStatus',
+          'getSensor',
+          'startSensor',
+          'stopSensor',
+          'onSensor',
+        ],
         hasRequire: false,
         hasProcess: false,
       });

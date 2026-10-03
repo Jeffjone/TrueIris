@@ -1,4 +1,11 @@
 import { useEffect, useState } from 'react';
+import {
+  useSensor,
+  sensorMessages,
+  sensorLabel,
+  type SensorControls,
+} from './sensor';
+import { SensorPanel } from './components/SensorPanel';
 import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
 import type { DesktopStatus } from '@trueiris/schemas';
 
@@ -40,7 +47,29 @@ function useStatus() {
   return { status, checked };
 }
 
-function Live() {
+function Live({ sensor }: { sensor: SensorControls }) {
+  const { snapshot } = sensor;
+  const reading = snapshot.reading;
+  const connected = snapshot.phase === 'running';
+  const message =
+    snapshot.phase === 'off'
+      ? {
+          title: 'A moment to connect.',
+          detail:
+            'Choose camera sensing to measure with Presage, or explore with an explicitly labeled mock sensor.',
+        }
+      : sensorMessages[snapshot.issue];
+  const quality = reading?.signalQuality;
+  const signal =
+    quality === 'excellent'
+      ? 'Excellent'
+      : quality === 'good'
+        ? 'Good'
+        : quality === 'poor'
+          ? 'Low confidence'
+          : connected
+            ? 'Calibrating'
+            : 'Not connected';
   return (
     <>
       <div className="page-heading">
@@ -48,41 +77,57 @@ function Live() {
           <p className="eyebrow">A LITTLE MORE AWARE</p>
           <h1>Your state, in context.</h1>
         </div>
-        <span className="pill">Sensing is off</span>
+        <span className="pill" data-testid="capture-status">
+          {sensorLabel(snapshot)}
+        </span>
       </div>
       <section className="live-surface" aria-label="Current physiology">
-        <div className="iris-ring">
+        <div className={`iris-ring ${connected ? 'sensor-connected' : ''}`}>
           <div className="iris-core" />
         </div>
-        <p className="eyebrow">PULSE</p>
-        <div className="pulse-value">
-          —<span>BPM</span>
-        </div>
-        <h2>A moment to connect.</h2>
-        <p className="muted">
-          Camera sensing will bring your live measurements here.
-          <br />
-          Nothing is being captured yet.
+        <p className="eyebrow">
+          {snapshot.provider === 'mock' ? 'MOCK PULSE' : 'PULSE'}
         </p>
+        <div className="pulse-value" data-testid="pulse-value">
+          {reading?.pulseRate === undefined
+            ? '—'
+            : Math.round(reading.pulseRate)}
+          <span>BPM</span>
+        </div>
+        <h2 data-testid="sensor-message">{message.title}</h2>
+        <p className="muted">{message.detail}</p>
+        {reading?.pulseConfidence !== undefined && (
+          <p className="confidence-note">
+            Pulse confidence {Math.round(reading.pulseConfidence * 100)}%
+            {reading.pulseRate === undefined ? ' · value withheld' : ''}
+          </p>
+        )}
         <div className="metrics">
           <div>
             <span>Breathing</span>
-            <strong>
-              — <small>/min</small>
+            <strong data-testid="respiration-value">
+              {reading?.respirationRate === undefined
+                ? '—'
+                : reading.respirationRate.toFixed(1)}{' '}
+              <small>/min</small>
             </strong>
           </div>
           <div>
             <span>HRV</span>
-            <strong>
-              — <small>ms</small>
+            <strong data-testid="hrv-value">
+              {reading?.hrvRmssd === undefined
+                ? '—'
+                : Math.round(reading.hrvRmssd)}{' '}
+              <small>ms</small>
             </strong>
           </div>
           <div>
             <span>Signal</span>
-            <strong className="signal-empty">Not connected</strong>
+            <strong className="signal-empty">{signal}</strong>
           </div>
         </div>
       </section>
+      <SensorPanel sensor={sensor} />
       <section className="context-strip">
         <span className="context-symbol" aria-hidden="true">
           ⌘
@@ -128,7 +173,13 @@ function EmptyPage({
   );
 }
 
-function Settings({ status }: { status: DesktopStatus | null }) {
+function Settings({
+  status,
+  sensor,
+}: {
+  status: DesktopStatus | null;
+  sensor: SensorControls;
+}) {
   return (
     <>
       <div className="page-heading">
@@ -140,14 +191,11 @@ function Settings({ status }: { status: DesktopStatus | null }) {
       <section className="settings-surface">
         <h2>Capture & privacy</h2>
         <p className="muted">
-          Capture controls will be available as each integration is added.
+          Camera sensing is controlled below. Other capture integrations remain
+          off.
         </p>
-        {[
-          'Camera sensing',
-          'Desktop context',
-          'Screen understanding',
-          'Voice',
-        ].map((label) => (
+        <SensorPanel sensor={sensor} />
+        {['Desktop context', 'Screen understanding', 'Voice'].map((label) => (
           <div className="settings-row" key={label}>
             <span>{label}</span>
             <span className="pill">Off · not connected</span>
@@ -188,6 +236,7 @@ function Settings({ status }: { status: DesktopStatus | null }) {
 
 export function App() {
   const { status, checked } = useStatus();
+  const sensor = useSensor();
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -219,16 +268,28 @@ export function App() {
                 ? 'API connected'
                 : 'API unavailable'}
           </span>
-          <p>
-            Private by design.
-            <br />
-            Present by choice.
-          </p>
+          <div className="global-sensor">
+            <span data-testid="global-capture-status">
+              {sensorLabel(sensor.snapshot)}
+            </span>
+            {['starting', 'running', 'stopping'].includes(
+              sensor.snapshot.phase,
+            ) && (
+              <button
+                disabled={sensor.snapshot.phase === 'stopping'}
+                onClick={() => {
+                  void sensor.stop();
+                }}
+              >
+                Stop sensor
+              </button>
+            )}
+          </div>
         </div>
       </aside>
       <main className="main-content">
         <Routes>
-          <Route path="/live" element={<Live />} />
+          <Route path="/live" element={<Live sensor={sensor} />} />
           <Route
             path="/timeline"
             element={
@@ -265,7 +326,10 @@ export function App() {
               />
             }
           />
-          <Route path="/settings" element={<Settings status={status} />} />
+          <Route
+            path="/settings"
+            element={<Settings status={status} sensor={sensor} />}
+          />
           <Route path="*" element={<Navigate to="/live" replace />} />
         </Routes>
         <footer className="content-footer">

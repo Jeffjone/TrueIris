@@ -5,3 +5,5 @@ packages:
 allowBuilds:
   electron: true
   esbuild: true
+  koffi: true
+  protobufjs: true

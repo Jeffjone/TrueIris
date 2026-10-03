@@ -384,3 +384,72 @@ h2 {
     padding: 20px 16px;
   }
 }
+
+.sensor-panel {
+  padding: 22px 2px;
+  border-bottom: 1px solid var(--border);
+}
+.sensor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  align-items: center;
+  justify-content: space-between;
+}
+.sensor-actions label {
+  font-size: 12px;
+  color: var(--muted);
+}
+.sensor-actions select {
+  font: inherit;
+  color: #29372e;
+  padding: 9px 12px;
+  margin-left: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fafbf6;
+}
+.sensor-button {
+  font-size: 12px;
+  color: #2e503b;
+  padding: 10px 16px;
+  border: 1px solid #ced9c6;
+  border-radius: 8px;
+  background: #e5ebdf;
+}
+.sensor-button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.sensor-privacy {
+  margin-top: 14px;
+  font-size: 10px;
+  max-width: 600px;
+}
+.confidence-note {
+  font-size: 10px;
+  color: var(--muted);
+  margin: 10px 0 0;
+}
+.sensor-connected {
+  border-color: #a2b99b;
+}
+.sensor-actions select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.global-sensor {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.global-sensor button {
+  align-self: flex-start;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  font-size: 11px;
+  text-decoration: underline;
+}

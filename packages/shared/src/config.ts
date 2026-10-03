@@ -17,6 +17,20 @@ const envSchema = z.object({
       'Must use HTTP or HTTPS',
     )
     .default('http://127.0.0.1:3001'),
+  TRUEIRIS_SENSOR_PROVIDER: z.enum(['presage', 'mock']).default('presage'),
+  TRUEIRIS_MOCK_SENSOR_SCENARIO: z
+    .enum([
+      'steady',
+      'no_face',
+      'low_confidence',
+      'lighting',
+      'motion',
+      'talking',
+      'network',
+      'no_camera',
+      'permission_denied',
+    ])
+    .default('steady'),
   TRUEIRIS_API_HOST: z.string().min(1).default('127.0.0.1'),
   TRUEIRIS_API_PORT: z.coerce.number().int().min(1).max(65535).default(3001),
   TRUEIRIS_DEMO_MODE: z

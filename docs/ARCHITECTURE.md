@@ -1,22 +1,26 @@
 # TrueIris architecture
 
-`TRUEIRIS_SPEC.md` is the project brief. This document records the chosen architecture and explicitly separates the running foundation from planned capabilities.
+`TRUEIRIS_SPEC.md` is the project brief. This document records the chosen architecture and explicitly separates the running foundation and sensor integration from planned capabilities.
 
 ## Running foundation
 
 ```mermaid
 flowchart LR
-  UI[React renderer / hash routes] -->|typed getStatus only| PL[Sandboxed preload]
+  UI[React renderer / hash routes] -->|named status/sensor operations| PL[Sandboxed preload]
   PL -->|validated IPC sender| MAIN[Electron main]
   MAIN -->|HTTP /health + timeout| API[Fastify API]
+  MAIN -->|private start/stop messages| WORKER[Presage native utility process]
+  WORKER -->|validated sensor events| MAIN
+  CAMERA[User-started webcam] --> WORKER
+  WORKER -->|derived vitals summaries| PRESAGE[Presage insight service]
   SCHEMAS[Shared Zod contracts] -.-> PL
   SCHEMAS -.-> MAIN
   SCHEMAS -.-> API
 ```
 
-The renderer has no Node integration and no API credentials. The preload bundles its dependencies into CommonJS because sandboxed Electron preloads cannot use a normal Node module loader. It exposes one named operation rather than generic IPC. Main rejects calls from other web contents and subframes. Navigation, new windows, webviews, and permissions are denied. A local CSP limits renderer resources. Production uses local HTML and hash routing; development uses electron-vite HMR.
+The renderer has no Node integration and no API credentials. The preload bundles its dependencies into CommonJS because sandboxed Electron preloads cannot use a normal Node module loader. It exposes named status, sensor get/start/stop, and validated event subscription operations rather than generic IPC. Main rejects calls from other web contents and subframes. External navigation, new windows, webviews, and renderer permissions are denied. Main requests native camera permission only for a user-started Presage session. A local CSP limits renderer resources. Production uses local HTML and hash routing; development uses electron-vite HMR.
 
-API configuration and secrets stay in the main/backend processes. Only a validated, nonsecret status reaches React. `/health` reports process liveness, not database or sponsor availability; those dependencies explicitly report `not_implemented`. Main verifies the response and reports `unavailable` after failed requests, invalid payloads, redirects, or a 2.5-second timeout. UI rechecks every five seconds without crashing when the API is stopped.
+API configuration and secrets stay in the main/backend processes. Only validated, nonsecret status and normalized readings reach React. `/health` reports process liveness, not database or sponsor availability; those dependencies explicitly report `not_implemented`. Main verifies the response and reports `unavailable` after failed requests, invalid payloads, redirects, or a 2.5-second timeout. UI rechecks every five seconds without crashing when the API is stopped.
 
 ## Target evidence flow
 
@@ -41,14 +45,14 @@ flowchart TD
   ANSWER --> TTS[ElevenLabs streaming TTS]
 ```
 
-These sensing, persistence, analytics, memory, agent, and voice nodes are planned, not implemented by the foundation.
+The sensor and transient live events are implemented. Persistence, context, analytics, memory, agent, and voice nodes remain planned.
 
 ## Workspace ownership
 
 | Location                       | Responsibility                                                         | Allowed dependencies                        |
 | ------------------------------ | ---------------------------------------------------------------------- | ------------------------------------------- |
 | `apps/desktop/src/main`        | OS/camera lifecycle, private configuration, ingestion transport        | shared contracts; native adapters; API      |
-| `apps/desktop/src/preload`     | Named IPC capabilities; event subscriptions later                      | browser-safe schemas and bridge types       |
+| `apps/desktop/src/preload`     | Named IPC capabilities and validated event subscriptions               | browser-safe schemas and bridge types       |
 | `apps/desktop/src/renderer`    | Design system, views, live presentation, evidence selection            | schemas/types, React; no Node or secrets    |
 | `apps/api/src`                 | HTTP/WebSocket ingress, analytics orchestration, agents and tools      | shared, schemas; db/analytics when added    |
 | `packages/schemas`             | Runtime validation at trust boundaries                                 | Zod only                                    |
@@ -62,13 +66,17 @@ Shared workspace packages export TypeScript source and are bundled into applicat
 
 ## Provider boundaries
 
-Feature 2 will implement the existing `SensorProvider` contract with real and explicit mock adapters. Later services add `ContextProvider`, `ReasoningProvider`, `EmbeddingProvider`, and `VoiceProvider` with deterministic mock implementations and failure tests. Adapters normalize vendor responses and hide vendor types from UI/analytics. Unsupported or unauthorized metrics stay absent; absence is never a zero measurement.
+Feature 2 implements `SensorProvider` with real Presage and explicit mock adapters. Later services add `ContextProvider`, `ReasoningProvider`, `EmbeddingProvider`, and `VoiceProvider` with deterministic mock implementations and failure tests. Adapters normalize vendor responses and hide vendor types from UI/analytics. Unsupported or unauthorized metrics stay absent; absence is never a zero measurement.
 
-Production sensing runs in Electron main or a main-owned utility process if measurements cause main-thread contention. The API receives normalized measurements, never raw frames. SDK telemetry/external processing must be reviewed and documented before activation. The renderer receives transient waveforms/status through allowlisted event subscriptions with cleanup.
+Native sensing runs in a main-owned utility process, keeping blocking native startup and raw frames outside main and renderer. Main owns a session/generation controller: concurrent starts are bounded, canceled permission requests cannot later start capture, late events are ignored, and failed teardown blocks replacement capture. Native stopAsync/destroy is awaited with a bounded kill fallback. Stop, document reload, renderer crash, window close, and quit release the worker; hash navigation preserves the session. React subscribes once across routes and shows a persistent status/Stop control.
+
+The worker requests only pulse, breathing, HRV, and talking. It decodes protobuf packets, merges partial metrics by their own timestamps, and withholds unstable, stale, invalid, low-confidence, or talking-affected values. Confidence is normalized from vendor percentages to 0–1. No raw buffers, vendor error text, or keys reach renderer IPC. See [sensor setup](PRESAGE_SETUP.md) for thresholds and expiry.
+
+The API currently receives no measurements. Optional SDK telemetry is disabled, but automatic Presage insight uploads send derived vitals summaries off-device. TrueIris does not request or display vendor-generated insights. The [privacy inventory](PRIVACY.md) documents this separate flow.
 
 ## Temporal data and provenance
 
-All persisted timestamps use PostgreSQL `timestamptz` and UTC ISO strings at application boundaries. Relative SDK timestamps use a monotonic clock mapped to a captured UTC session origin, avoiding wall-clock adjustments. Display timezone is an explicit user setting; date tools resolve local days into UTC ranges.
+All persisted timestamps use PostgreSQL `timestamptz` and UTC ISO strings at application boundaries. SmartSpectra 3.4 metric samples use absolute microsecond Unix timestamps, converted to milliseconds for freshness checks. Outgoing readings carry the current UTC observation time; each cached metric expires using its own vendor timestamp. Future relative-clock adapters must map a monotonic clock to a captured UTC session origin. Display timezone is an explicit user setting; date tools resolve local days into UTC ranges.
 
 Three data rates remain separate: transient UI signal, roughly one persisted measurement per second, and 30–60 second reasoning epochs. Metric-specific confidence gates operate before aggregation. Epochs store sample counts, coverage/gaps, and per-metric valid counts; aggregate confidence cannot hide one missing metric. Context switches split intervals and either split epochs or record context composition. Do not average measurements across unrelated sessions or users.
 
@@ -117,7 +125,7 @@ See [privacy inventory](PRIVACY.md). Logs use structured event names and avoid a
 1. Electron/React/Vite + Fastify follows the brief and keeps TypeScript across the stack. No prior architecture existed.
 2. A pnpm workspace keeps schemas and application code together without adding a task orchestrator or unnecessary service infrastructure.
 3. Hash routing supports Electron local files without a routing server.
-4. Native sensor support, credential entitlement, confidence semantics, and HRV startup latency are the first hardware risks. Verify real pulse before widening the UI.
+4. Genuine pulse was verified in the built UI on macOS Apple Silicon with SDK 3.4.0. Accepted respiration and talking-state transitions were also verified; valid live HRV remains unverified. Other supported native platforms and signed installers still need hardware verification.
 5. Tiger Cloud extension availability, vector model/dimension, context permissions across operating systems, remote authentication, and voice latency need separate acceptance checks.
 6. Bundled production output is runnable; installer/signing/notarization is later packaging work and has not been claimed complete.
 

@@ -2,7 +2,7 @@
 
 Built for RowdyHacks XII. TrueIris is a personal context intelligence desktop application: physiological observations, computer activity, temporal history, and evidence-grounded conversation.
 
-The master instructions live in [TRUEIRIS_SPEC.md](TRUEIRIS_SPEC.md). This initial milestone delivers a runnable application foundation and the [architecture](docs/ARCHITECTURE.md). Sensor, database, AI, and voice integrations are planned; the UI shows empty states rather than generated measurements or answers.
+The master instructions live in [TRUEIRIS_SPEC.md](TRUEIRIS_SPEC.md). The foundation and Feature 2 sensor integration are implemented: user-started Presage camera sensing, validated pulse/respiration/HRV/talking events, confidence gates, and an explicitly labeled mock provider. Database, context, AI, and voice integrations remain planned. See the [architecture](docs/ARCHITECTURE.md).
 
 ## Architecture
 
@@ -14,7 +14,7 @@ flowchart LR
   API -. planned .-> DB[Tiger Data / TimescaleDB / vectors]
   API -. planned .-> AI[Gemini tools and reasoning]
   API -. planned .-> VOICE[ElevenLabs voice]
-  SENSOR[Presage sensor - planned] -.-> MAIN
+  SENSOR[Presage / native utility process] --> MAIN
 ```
 
 See [initial repo analysis](docs/REPO_ANALYSIS.md), [architecture and data model](docs/ARCHITECTURE.md), [feature roadmap](docs/IMPLEMENTATION_PLAN.md), and [privacy inventory](docs/PRIVACY.md).
@@ -30,7 +30,9 @@ cp .env.example .env
 pnpm dev
 ```
 
-`pnpm dev` starts Fastify on `127.0.0.1:3001` and Electron with React HMR. Configuration defaults work without `.env` or credentials. The root `.env` is loaded by main/backend processes even when launched through a workspace command. Never use a `VITE_` variable for a private key. Restart processes after changing environment variables. Electron 44 downloads its native binary on first use, so the first desktop launch needs network access and can take several minutes.
+`pnpm dev` starts Fastify on `127.0.0.1:3001` and Electron with React HMR. Configuration defaults work without `.env` or credentials. For live sensing, set `PRESAGE_API_KEY` in the ignored `.env`, restart, then choose **Start camera sensing** on Live. Camera capture never starts automatically. Read [Presage setup and verification](docs/PRESAGE_SETUP.md) for platform requirements, quality handling, mock scenarios, and native packaging.
+
+The root `.env` is loaded by main/backend processes even when launched through a workspace command. Never use a `VITE_` variable for a private key. Restart processes after changing environment variables. Electron 44 downloads its native binary on first use, so the first desktop launch needs network access and can take several minutes.
 
 ## Development commands
 
@@ -53,15 +55,15 @@ For production-output verification, run `pnpm build`, then `pnpm start:api` and 
 
 `GET http://127.0.0.1:3001/health` reports API liveness and explicit unimplemented integrations. An API connection is not proof that sponsor services are connected. Stopping the API updates the desktop connection indicator automatically.
 
-## Sponsor integration setup (next milestones)
+## Sponsor integration setup
 
-| Technology           | Planned role                                        | Setup / current state                                                                                                                                                                                                               |
-| -------------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Presage SmartSpectra | Native physiological perception                     | Obtain `PRESAGE_API_KEY`; verify subscription-enabled cardio/HRV metrics and platform runtime. [Official Node/Electron docs](https://smartspectra.presagetech.com/docs/nodejs/). Adapter and camera permissions are not active yet. |
-| Tiger Data           | Temporal measurements, aggregates, semantic storage | Provision PostgreSQL with TimescaleDB and vector support; set `DATABASE_URL` with the provider's TLS requirements. [Tiger docs](https://www.tigerdata.com/docs). No migrations or connection yet.                                   |
-| Gemini               | Explicit tool calls, grounded answers, embeddings   | Obtain `GEMINI_API_KEY` from Google AI Studio. [Function-calling docs](https://ai.google.dev/gemini-api/docs/function-calling). Model selection and agent arrive later.                                                             |
-| ElevenLabs           | Realtime STT and streaming TTS                      | Set `ELEVENLABS_API_KEY` and `ELEVENLABS_VOICE_ID`. [Realtime token docs](https://elevenlabs.io/docs/eleven-api/guides/how-to/speech-to-text/realtime/client-side-streaming). Token issuance and audio streaming arrive later.      |
-| Vultr                | Dockerized API orchestration                        | `VULTR_DEPLOYMENT_ENV` accepts local/staging/production. Remote deployment needs TLS, authentication, scoped queries, container configuration, and service checks; no deployment has occurred.                                      |
+| Technology           | Planned role                                        | Setup / current state                                                                                                                                                                                                          |
+| -------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Presage SmartSpectra | Native physiological perception                     | Implemented with SDK 3.4.0 in a main-owned utility process. Set `PRESAGE_API_KEY`; metric availability depends on plan and signal. [Setup guide](docs/PRESAGE_SETUP.md).                                                       |
+| Tiger Data           | Temporal measurements, aggregates, semantic storage | Provision PostgreSQL with TimescaleDB and vector support; set `DATABASE_URL` with the provider's TLS requirements. [Tiger docs](https://www.tigerdata.com/docs). No migrations or connection yet.                              |
+| Gemini               | Explicit tool calls, grounded answers, embeddings   | Obtain `GEMINI_API_KEY` from Google AI Studio. [Function-calling docs](https://ai.google.dev/gemini-api/docs/function-calling). Model selection and agent arrive later.                                                        |
+| ElevenLabs           | Realtime STT and streaming TTS                      | Set `ELEVENLABS_API_KEY` and `ELEVENLABS_VOICE_ID`. [Realtime token docs](https://elevenlabs.io/docs/eleven-api/guides/how-to/speech-to-text/realtime/client-side-streaming). Token issuance and audio streaming arrive later. |
+| Vultr                | Dockerized API orchestration                        | `VULTR_DEPLOYMENT_ENV` accepts local/staging/production. Remote deployment needs TLS, authentication, scoped queries, container configuration, and service checks; no deployment has occurred.                                 |
 
 Keep API secrets in `.env` or runtime secret configuration. They are ignored by Git and never sent through the preload bridge. Setting a key does not activate an unimplemented integration.
 
@@ -69,17 +71,18 @@ Keep API secrets in `.env` or runtime secret configuration. They are ignored by 
 
 `TRUEIRIS_DEMO_MODE` defaults to `false`; it is strictly parsed. Setting it to `true` currently records the requested configuration only. Seeded history, sensor fallback, and presentation mode are future work. There is no simulated history in this milestone.
 
-Camera sensing, desktop context, screenshots, and voice are inactive. The API binds to loopback by default. No observation is stored or sent to sponsor APIs. Future screen understanding requires explicit opt-in and transient image processing; all data sources must retain real/mock/seed provenance. See [privacy inventory](docs/PRIVACY.md).
+Camera sensing requires an explicit start and operating-system permission. Its status and Stop control remain visible across routes. Frames stay in the native worker; TrueIris retains only the current normalized reading in memory. Presage automatically uploads derived vitals summaries to its insight service; optional diagnostic telemetry is disabled. This disclosure appears before camera start. Desktop context, screenshots, and voice remain inactive. The API binds to loopback and receives no observations yet. Future screen understanding requires explicit opt-in and transient image processing; all data sources retain real/mock/seed provenance. See [privacy inventory](docs/PRIVACY.md).
 
 ## Troubleshooting
 
 - **API unavailable:** run `pnpm dev:api`; check `/health`, the host/port, and `TRUEIRIS_API_URL`. The renderer remains usable without it.
 - **Invalid environment fields:** check only the named fields against `.env.example`; demo mode must be `true` or `false`, the port must be 1–65535, and URLs must use the expected protocol. Error messages intentionally omit values.
-- **Electron binary missing:** use the pinned pnpm version and run `pnpm --filter @trueiris/desktop exec install-electron`. `allowBuilds` permits Electron/esbuild scripts; do not globally enable all dependency scripts.
+- **Electron binary missing:** use the pinned pnpm version and run `pnpm --filter @trueiris/desktop exec install-electron`. `allowBuilds` permits Electron/esbuild/koffi/protobufjs scripts; do not globally enable all dependency scripts.
 - **Electron runs as Node:** if an editor-hosted environment sets `ELECTRON_RUN_AS_NODE`, unset it before launching the desktop (`env -u ELECTRON_RUN_AS_NODE pnpm dev` on macOS/Linux). Integration tests remove it automatically.
 - **Blank desktop:** inspect terminal lifecycle logs, run `pnpm check`, and confirm the preload and renderer bundles exist in `apps/desktop/out`. Dev uses port 5173 with strict conflict detection.
 - **Linux CI without a display:** run integration tests with `xvfb-run --auto-servernum pnpm test:integration`. CI may need `ELECTRON_DISABLE_SANDBOX=1` only for the automated launch environment; desktop security preferences remain enabled.
-- **No pulse/voice/history:** these integrations are not implemented in the foundation. Follow the roadmap rather than assuming missing credentials are the only issue.
+- **No pulse:** check the visible sensor issue and [Presage troubleshooting](docs/PRESAGE_SETUP.md). Values are withheld when the signal is missing, unstable, low-confidence, or affected by motion/talking; mock sensing must be selected explicitly.
+- **No voice/history:** these integrations are still planned; follow the roadmap.
 
 ## Feature workflow
 
