@@ -44,6 +44,26 @@ function provider() {
   };
 }
 describe('sensor lifecycle controller', () => {
+  it('owns the session start across quality changes and resets it after stop/restart', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-03T20:00:00Z'));
+    const fake = provider();
+    const { controller } = setup(async () => fake.instance);
+    await controller.start('mock');
+    const start = controller.get().startedAt;
+    expect(start).toBe('2026-10-03T20:00:00.000Z');
+    await vi.advanceTimersByTimeAsync(2000);
+    fake.emit({ kind: 'issue', issue: 'no_face' });
+    fake.emit(fake.reading());
+    fake.emit({ kind: 'ready' });
+    expect(controller.get().startedAt).toBe(start);
+    await controller.stop();
+    expect(controller.get().startedAt).toBeNull();
+    await controller.start('mock');
+    expect(controller.get().startedAt).toBe('2026-10-03T20:00:02.000Z');
+    fake.emit({ kind: 'error', issue: 'network' });
+    expect(controller.get().startedAt).toBeNull();
+  });
   it('starts only once on concurrent requests and ignores readings after stop', async () => {
     const fake = provider();
     const factory = vi.fn(async () => fake.instance);

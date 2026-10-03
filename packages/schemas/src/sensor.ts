@@ -31,6 +31,8 @@ export const sensorSnapshotSchema = z
     issue: sensorIssueSchema,
     reading: sensorReadingSchema.nullable(),
     sessionId: z.uuid().nullable(),
+    // Main-owned UTC start assigned on provider readiness; null outside a session.
+    startedAt: z.iso.datetime().nullable(),
   })
   .strict();
 export type SensorSnapshot = z.infer<typeof sensorSnapshotSchema>;

@@ -6,7 +6,7 @@ Complete one feature, validate, review the diff, update documentation, commit, p
 | -------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | P0       | Foundation (completed)     | Desktop main/preload/renderer, routes, error boundary, status, API, strict typing, config/logging, checks and runnable production output                  |
 | P0       | Presage sensor (completed) | Genuine pulse from camera on demo machine; typed normalization; quality/error states; labeled mock provider; permission and native packaging verification |
-| P0       | Live UI                    | Dominant pulse; breathing/HRV when available; confidence; session/context; reliable reactive updates                                                      |
+| P0       | Live UI (completed)        | Dominant pulse; breathing/HRV when available; confidence; session/context; reliable reactive updates                                                      |
 | P0       | Tiger persistence          | Authenticated scoped ingestion; bounded batch/retry; idempotency; timestamp tests; epoch computation; migrations                                          |
 | P0       | Timeline                   | Trends/context/gaps; period selection; no invented readings; timezone handling                                                                            |
 | P0       | Context engine             | Supported foreground app/idle provider; consent; interval segmentation; manual override; unsupported-platform fallback                                    |
@@ -43,3 +43,7 @@ Add `pnpm db:migrate`, `pnpm seed:demo`, and `pnpm seed:clear` when their implem
 ## Feature 2 verification
 
 The built macOS Apple Silicon application produced a genuine live Presage pulse in the visible UI with accepted confidence, then stopped sensing successfully. A second session also confirmed accepted respiration and talking-state transitions; valid live HRV remains unverified. Unit tests cover normalization, provenance, quality gates, provider lifecycle, and mock failures. Desktop integration tests cover mock updates, routing, reload cleanup, missing credentials, withheld values, and native library loading. See [Presage setup](PRESAGE_SETUP.md). Native installer creation remains deferred; this milestone verifies runnable production bundles. Feature 3 adds the fuller live session/context experience.
+
+## Feature 3 verification
+
+The live view displays pulse, respiration, HRV, and per-metric confidence with explicit signal/failure states. A main-owned session start anchors duration across navigation; manual activity is labeled, and application context is explicitly off pending Feature 6. Automated checks cover realtime updates, stop/restart, clock boundaries, compact/narrow layouts, reduced motion, and visible Stop access. See [live view behavior](LIVE_VIEW.md).

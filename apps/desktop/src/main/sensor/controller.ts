@@ -32,6 +32,7 @@ export class SensorController {
       phase: 'off',
       issue: 'none',
       sessionId: null,
+      startedAt: null,
       reading: null,
     };
     this.heartbeat = setInterval(() => {
@@ -61,7 +62,12 @@ export class SensorController {
       })
       .catch(() => {
         this.cleanupFailed = true;
-        this.update({ phase: 'error', issue: 'processing', reading: null });
+        this.update({
+          phase: 'error',
+          issue: 'processing',
+          reading: null,
+          startedAt: null,
+        });
       });
     return this.cleanup;
   }
@@ -80,6 +86,7 @@ export class SensorController {
       phase: 'starting',
       issue: 'calibrating',
       sessionId,
+      startedAt: null,
       reading: null,
     });
     try {
@@ -102,7 +109,7 @@ export class SensorController {
   }
   private fail(issue: SensorIssue) {
     ++this.generation;
-    this.update({ phase: 'error', issue, reading: null });
+    this.update({ phase: 'error', issue, reading: null, startedAt: null });
     void this.release();
   }
   private receive(generation: number, event: SensorEvent) {
@@ -112,7 +119,10 @@ export class SensorController {
       return;
     }
     if (event.kind === 'ready') {
-      this.update({ phase: 'running' });
+      this.update({
+        phase: 'running',
+        startedAt: this.snapshot.startedAt ?? new Date().toISOString(),
+      });
       return;
     }
     if (event.kind === 'issue') {
@@ -148,6 +158,7 @@ export class SensorController {
         phase: 'off',
         issue: 'none',
         sessionId: null,
+        startedAt: null,
         reading: null,
       });
     return this.get();

@@ -1,25 +1,6 @@
-import { _electron as electron, expect, test } from '@playwright/test';
-import { createRequire } from 'node:module';
+import { expect, test } from '@playwright/test';
+import { launchSensorDesktop as launch } from './helpers';
 import { resolve } from 'node:path';
-const require = createRequire(resolve('apps/desktop/package.json'));
-const environment = { ...process.env };
-delete environment.ELECTRON_RUN_AS_NODE;
-
-async function launch(scenario = 'steady') {
-  const app = await electron.launch({
-    executablePath: require('electron') as string,
-    args: [resolve('apps/desktop')],
-    env: {
-      ...environment,
-      PRESAGE_API_KEY: '',
-      TRUEIRIS_SENSOR_PROVIDER: 'presage',
-      TRUEIRIS_MOCK_SENSOR_SCENARIO: scenario,
-      LOG_LEVEL: 'silent',
-      ELECTRON_RENDERER_URL: '',
-    },
-  });
-  return { app, page: await app.firstWindow() };
-}
 test('explicit mock stream updates UI, survives routing, and stops on reload', async () => {
   const { app, page } = await launch();
   try {
@@ -80,6 +61,7 @@ test('missing credentials do not open a camera or expose secrets', async () => {
       'issue',
       'reading',
       'sessionId',
+      'startedAt',
     ]);
   } finally {
     await app.close();

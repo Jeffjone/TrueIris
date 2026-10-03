@@ -10,7 +10,9 @@ Optional aggregate diagnostic telemetry is explicitly disabled with `enableTelem
 
 Keys remain in main/worker configuration. The worker receives only its required key through a private parent message, not the renderer bridge, and inherits an environment allowlist. Strict schemas reject unknown event fields. Vendor free-text errors and raw native logs are discarded; application logs contain lifecycle phase/provider/issue enums, not readings or credentials.
 
-The configured API receives health requests only. No microphone, OS foreground application, window title, screenshots, journal entry, or user history is captured. Renderer permission requests remain denied; native camera permission is a separate main-owned operation.
+Feature 3 adds an optional manual activity label kept only in renderer memory across routes. It is explicitly user-selected, clears on reload, and is not logged, persisted, or sent externally. The session clock exposes only the active sensor start time; it creates no historical record. Foreground application detection remains off.
+
+The configured API receives health requests only. No microphone, OS foreground application, window title, screenshots, journal entry, or user history is captured automatically. Renderer permission requests remain denied; native camera permission is a separate main-owned operation.
 
 ## Integration inventory
 

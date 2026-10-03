@@ -1,6 +1,6 @@
 # TrueIris architecture
 
-`TRUEIRIS_SPEC.md` is the project brief. This document records the chosen architecture and explicitly separates the running foundation and sensor integration from planned capabilities.
+`TRUEIRIS_SPEC.md` is the project brief. This document records the chosen architecture and explicitly separates the running foundation, sensor integration, and live view from planned capabilities.
 
 ## Running foundation
 
@@ -71,6 +71,8 @@ Feature 2 implements `SensorProvider` with real Presage and explicit mock adapte
 Native sensing runs in a main-owned utility process, keeping blocking native startup and raw frames outside main and renderer. Main owns a session/generation controller: concurrent starts are bounded, canceled permission requests cannot later start capture, late events are ignored, and failed teardown blocks replacement capture. Native stopAsync/destroy is awaited with a bounded kill fallback. Stop, document reload, renderer crash, window close, and quit release the worker; hash navigation preserves the session. React subscribes once across routes and shows a persistent status/Stop control.
 
 The worker requests only pulse, breathing, HRV, and talking. It decodes protobuf packets, merges partial metrics by their own timestamps, and withholds unstable, stale, invalid, low-confidence, or talking-affected values. Confidence is normalized from vendor percentages to 0–1. No raw buffers, vendor error text, or keys reach renderer IPC. See [sensor setup](PRESAGE_SETUP.md) for thresholds and expiry.
+
+Feature 3 separates live presentation into `renderer/src/live`. Signal issues take precedence over quality, and each available metric displays its own confidence. The validated snapshot includes a main-owned nullable `startedAt` UTC timestamp assigned on provider readiness; the renderer derives session duration from it, preserving time across routes. Stop/error clears it, and restarts assign a new timestamp. Manual activity stays in renderer memory and is labeled user-selected; foreground application remains explicitly off until Feature 6. Subtle accepted-signal animation respects reduced motion. See [live view behavior](LIVE_VIEW.md).
 
 The API currently receives no measurements. Optional SDK telemetry is disabled, but automatic Presage insight uploads send derived vitals summaries off-device. TrueIris does not request or display vendor-generated insights. The [privacy inventory](PRIVACY.md) documents this separate flow.
 

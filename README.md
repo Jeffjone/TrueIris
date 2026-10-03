@@ -2,7 +2,7 @@
 
 Built for RowdyHacks XII. TrueIris is a personal context intelligence desktop application: physiological observations, computer activity, temporal history, and evidence-grounded conversation.
 
-The master instructions live in [TRUEIRIS_SPEC.md](TRUEIRIS_SPEC.md). The foundation and Feature 2 sensor integration are implemented: user-started Presage camera sensing, validated pulse/respiration/HRV/talking events, confidence gates, and an explicitly labeled mock provider. Database, context, AI, and voice integrations remain planned. See the [architecture](docs/ARCHITECTURE.md).
+The master instructions live in [TRUEIRIS_SPEC.md](TRUEIRIS_SPEC.md). The foundation, Feature 2 sensor integration, and Feature 3 live view are implemented: user-started Presage camera sensing, validated pulse/respiration/HRV/talking events, confidence gates, and an explicitly labeled mock provider. The live view adds per-metric confidence, responsive signal states, a sensing-session clock, and explicitly manual activity selection. Database, OS context, AI, and voice integrations remain planned. See the [architecture](docs/ARCHITECTURE.md).
 
 ## Architecture
 
@@ -17,7 +17,7 @@ flowchart LR
   SENSOR[Presage / native utility process] --> MAIN
 ```
 
-See [initial repo analysis](docs/REPO_ANALYSIS.md), [architecture and data model](docs/ARCHITECTURE.md), [feature roadmap](docs/IMPLEMENTATION_PLAN.md), and [privacy inventory](docs/PRIVACY.md).
+See [initial repo analysis](docs/REPO_ANALYSIS.md), [architecture and data model](docs/ARCHITECTURE.md), [feature roadmap](docs/IMPLEMENTATION_PLAN.md), [live view behavior](docs/LIVE_VIEW.md), and [privacy inventory](docs/PRIVACY.md).
 
 ## Requirements and setup
 

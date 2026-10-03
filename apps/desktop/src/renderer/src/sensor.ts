@@ -107,6 +107,7 @@ const initial: SensorSnapshot = {
   phase: 'off',
   issue: 'none',
   sessionId: null,
+  startedAt: null,
   reading: null,
 };
 export function useSensor() {

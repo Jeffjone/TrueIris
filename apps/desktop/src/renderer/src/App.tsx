@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react';
-import {
-  useSensor,
-  sensorMessages,
-  sensorLabel,
-  type SensorControls,
-} from './sensor';
+import { useSensor, sensorLabel, type SensorControls } from './sensor';
+import { LiveView } from './live/LiveView';
+import type { Activity } from './live/presentation';
 import { SensorPanel } from './components/SensorPanel';
 import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
 import type { DesktopStatus } from '@trueiris/schemas';
@@ -45,103 +42,6 @@ function useStatus() {
     };
   }, []);
   return { status, checked };
-}
-
-function Live({ sensor }: { sensor: SensorControls }) {
-  const { snapshot } = sensor;
-  const reading = snapshot.reading;
-  const connected = snapshot.phase === 'running';
-  const message =
-    snapshot.phase === 'off'
-      ? {
-          title: 'A moment to connect.',
-          detail:
-            'Choose camera sensing to measure with Presage, or explore with an explicitly labeled mock sensor.',
-        }
-      : sensorMessages[snapshot.issue];
-  const quality = reading?.signalQuality;
-  const signal =
-    quality === 'excellent'
-      ? 'Excellent'
-      : quality === 'good'
-        ? 'Good'
-        : quality === 'poor'
-          ? 'Low confidence'
-          : connected
-            ? 'Calibrating'
-            : 'Not connected';
-  return (
-    <>
-      <div className="page-heading">
-        <div>
-          <p className="eyebrow">A LITTLE MORE AWARE</p>
-          <h1>Your state, in context.</h1>
-        </div>
-        <span className="pill" data-testid="capture-status">
-          {sensorLabel(snapshot)}
-        </span>
-      </div>
-      <section className="live-surface" aria-label="Current physiology">
-        <div className={`iris-ring ${connected ? 'sensor-connected' : ''}`}>
-          <div className="iris-core" />
-        </div>
-        <p className="eyebrow">
-          {snapshot.provider === 'mock' ? 'MOCK PULSE' : 'PULSE'}
-        </p>
-        <div className="pulse-value" data-testid="pulse-value">
-          {reading?.pulseRate === undefined
-            ? '—'
-            : Math.round(reading.pulseRate)}
-          <span>BPM</span>
-        </div>
-        <h2 data-testid="sensor-message">{message.title}</h2>
-        <p className="muted">{message.detail}</p>
-        {reading?.pulseConfidence !== undefined && (
-          <p className="confidence-note">
-            Pulse confidence {Math.round(reading.pulseConfidence * 100)}%
-            {reading.pulseRate === undefined ? ' · value withheld' : ''}
-          </p>
-        )}
-        <div className="metrics">
-          <div>
-            <span>Breathing</span>
-            <strong data-testid="respiration-value">
-              {reading?.respirationRate === undefined
-                ? '—'
-                : reading.respirationRate.toFixed(1)}{' '}
-              <small>/min</small>
-            </strong>
-          </div>
-          <div>
-            <span>HRV</span>
-            <strong data-testid="hrv-value">
-              {reading?.hrvRmssd === undefined
-                ? '—'
-                : Math.round(reading.hrvRmssd)}{' '}
-              <small>ms</small>
-            </strong>
-          </div>
-          <div>
-            <span>Signal</span>
-            <strong className="signal-empty">{signal}</strong>
-          </div>
-        </div>
-      </section>
-      <SensorPanel sensor={sensor} />
-      <section className="context-strip">
-        <span className="context-symbol" aria-hidden="true">
-          ⌘
-        </span>
-        <div>
-          <p className="eyebrow">CURRENT ACTIVITY</p>
-          <h2>No active session</h2>
-          <p className="muted">
-            Desktop context will appear when you choose to enable it.
-          </p>
-        </div>
-      </section>
-    </>
-  );
 }
 
 function EmptyPage({
@@ -237,6 +137,7 @@ function Settings({
 export function App() {
   const { status, checked } = useStatus();
   const sensor = useSensor();
+  const [activity, setActivity] = useState<Activity>('');
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -289,7 +190,16 @@ export function App() {
       </aside>
       <main className="main-content">
         <Routes>
-          <Route path="/live" element={<Live sensor={sensor} />} />
+          <Route
+            path="/live"
+            element={
+              <LiveView
+                sensor={sensor}
+                activity={activity}
+                onActivity={setActivity}
+              />
+            }
+          />
           <Route
             path="/timeline"
             element={
