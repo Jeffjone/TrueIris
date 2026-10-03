@@ -1,0 +1,18 @@
+node_modules/
+.pnpm-store/
+.env
+.env.*
+!.env.example
+out/
+dist/
+coverage/
+playwright-report/
+test-results/
+*.log
+.DS_Store
+*.tsbuildinfo
+# Local observations and private media
+data/
+captures/
+recordings/
+screenshots/

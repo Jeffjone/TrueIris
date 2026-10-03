@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": [
+    "playwright.config.ts",
+    "vitest.config.ts",
+    "tests",
+    "apps/desktop/src/renderer/src/env.d.ts"
+  ],
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+  }
+}

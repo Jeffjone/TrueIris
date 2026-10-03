@@ -1,0 +1,39 @@
+{
+  "name": "trueiris",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.8.1",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "concurrently --kill-others -n api,desktop \"pnpm dev:api\" \"pnpm dev:desktop\"",
+    "dev:desktop": "pnpm --filter @trueiris/desktop dev",
+    "dev:api": "pnpm --filter @trueiris/api dev",
+    "start:desktop": "pnpm --filter @trueiris/desktop start",
+    "start:api": "pnpm --filter @trueiris/api start",
+    "lint": "eslint . --max-warnings 0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm -r typecheck && tsc -p tsconfig.tools.json",
+    "test": "vitest run",
+    "test:integration": "playwright test",
+    "build": "pnpm -r build",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^24.0.0",
+    "concurrently": "^9.2.1",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^16.5.0",
+    "prettier": "^3.6.2",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.71.0",
+    "vitest": "^4.1.11"
+  }
+}
