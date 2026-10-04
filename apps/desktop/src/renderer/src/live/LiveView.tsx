@@ -208,6 +208,9 @@ export function LiveView({
           <p className="context-caption">
             {activity ? 'Selected by you' : 'Choose what you’re doing'}
           </p>
+          <p className="context-caption">
+            Included in new readings when saving is on.
+          </p>
         </div>
         <div>
           <p className="eyebrow">CURRENT APPLICATION</p>

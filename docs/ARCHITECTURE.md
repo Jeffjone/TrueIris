@@ -45,7 +45,7 @@ flowchart TD
   ANSWER --> TTS[ElevenLabs streaming TTS]
 ```
 
-Sensor events, opt-in authenticated persistence and pure 30-second epoch analytics are implemented. Context, baselines, memory, agent and voice remain planned.
+Sensor events, opt-in authenticated persistence and pure 30-second epoch analytics are implemented. The Today timeline and optional recorded manual activity are implemented. Automatic OS context, baselines, memory, agent and voice remain planned.
 
 ## Workspace ownership
 
@@ -72,9 +72,9 @@ Native sensing runs in a main-owned utility process, keeping blocking native sta
 
 The worker requests only pulse, breathing, HRV, and talking. It decodes protobuf packets, merges partial metrics by their own timestamps, and withholds unstable, stale, invalid, low-confidence, or talking-affected values. Confidence is normalized from vendor percentages to 0–1. No raw buffers, vendor error text, or keys reach renderer IPC. See [sensor setup](PRESAGE_SETUP.md) for thresholds and expiry.
 
-Feature 3 separates live presentation into `renderer/src/live`. Signal issues take precedence over quality, and each available metric displays its own confidence. The validated snapshot includes a main-owned nullable `startedAt` UTC timestamp assigned on provider readiness; the renderer derives session duration from it, preserving time across routes. Stop/error clears it, and restarts assign a new timestamp. Manual activity stays in renderer memory and is labeled user-selected; foreground application remains explicitly off until Feature 6. Subtle accepted-signal animation respects reduced motion. See [live view behavior](LIVE_VIEW.md).
+Feature 3 separates live presentation into `renderer/src/live`. Signal issues take precedence over quality, and each available metric displays its own confidence. The validated snapshot includes a main-owned nullable `startedAt` UTC timestamp assigned on provider readiness; the renderer derives session duration from it, preserving time across routes. Stop/error clears it, and restarts assign a new timestamp. Manual activity is labeled user-selected and shared with main; Feature 5 stamps it on new measurements only while saving is enabled; foreground application remains explicitly off until Feature 6. Subtle accepted-signal animation respects reduced motion. See [live view behavior](LIVE_VIEW.md).
 
-The API currently receives no measurements. Optional SDK telemetry is disabled, but automatic Presage insight uploads send derived vitals summaries off-device. TrueIris does not request or display vendor-generated insights. The [privacy inventory](PRIVACY.md) documents this separate flow.
+The API receives measurements only through the separately enabled saving pipeline. Optional SDK telemetry is disabled, but automatic Presage insight uploads send derived vitals summaries off-device. TrueIris does not request or display vendor-generated insights. The [privacy inventory](PRIVACY.md) documents this separate flow.
 
 ## Temporal data and provenance
 
@@ -147,3 +147,7 @@ See [privacy inventory](PRIVACY.md). Logs use structured event names and avoid a
 The main-owned bounded queue receives validated sensor snapshots, preserves provenance and serializes one canonical UTC observation per second. Saving is off until the user enables it in Settings. A stable event UUID survives retries; overflow and bounded retry exhaustion are visible. The worker and renderer do not receive the API token or database credentials.
 
 Authenticated API batches insert measurements and recalculate touched 30-second epochs in one user-serialized transaction. Session ownership/source/origin are immutable. Hypertable uniqueness includes time; a separate session-second constraint avoids render-rate duplicates. Epochs preserve per-metric counts, missing values, coverage and variance, and never combine sessions or datasets. User-row locking also serializes deletion; its retained watermark blocks late replay. Export streams paginated observations through a native save dialog. See [Tiger Data implementation and setup](TIGER_DATA_SETUP.md) for SQL, health, TLS, queue limits and tests.
+
+## Feature 5 timeline
+
+A named validated history IPC capability connects the renderer timeline to private main transport and authenticated `GET /timeline`. The API binds reads to its configured owner/source and the database uses a read-only repeatable-read transaction. Per-session 30-second means/min–max trends remain separate from exact activity changes and signal gaps; selected periods query raw observations again for correctly weighted statistics. Explicit timezone calendar boundaries handle DST. Display caps are disclosed and exact summaries remain available; missing data never becomes zero. Migration 2 adds nullable measurement activity and a scoped time index. Recorded manual choice is metadata on opted-in observations, with OS classification and interval storage deferred to Feature 6. See [Today timeline design and validation](TIMELINE.md).

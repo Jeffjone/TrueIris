@@ -195,3 +195,31 @@ describe('measurement serialization and offline queue', () => {
     });
   });
 });
+
+it('stamps manual activity only on new opted-in observations and preserves it on retries', async () => {
+  const batches: Measurement[][] = [];
+  let now = 1000;
+  const queue = new MeasurementQueue(
+    true,
+    async (batch) => {
+      batches.push(batch);
+      return { status: 503 };
+    },
+    () => now,
+    () => 0,
+  );
+  try {
+    await queue.setEnabled(true);
+    const observation = snapshot();
+    queue.observe(observation, 'Coding');
+    queue.observe(observation, 'Break');
+    await queue.flush();
+    expect(batches[0]?.[0]?.activity).toBe('Coding');
+    expect(batches[0]?.length).toBe(1);
+    now += 1000;
+    await queue.flush();
+    expect(batches[1]).toEqual(batches[0]);
+  } finally {
+    await queue.dispose();
+  }
+});

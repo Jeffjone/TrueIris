@@ -1,10 +1,12 @@
 import { z } from 'zod';
 import { sensorReadingSchema } from './reading';
+import { activitySchema } from './timeline';
 
 // Canonical second-aligned UTC timestamps make retry identity unambiguous.
 export const measurementSchema = sensorReadingSchema
   .extend({
     eventId: z.uuid(),
+    activity: activitySchema.optional(),
     startedAt: z.iso.datetime(),
   })
   .strict()

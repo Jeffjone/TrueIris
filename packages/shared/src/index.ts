@@ -4,6 +4,9 @@ import type {
   SensorProviderKind,
   SensorSnapshot,
   StorageStatus,
+  TimelineQuery,
+  TimelineResult,
+  RecordedActivity,
 } from '@trueiris/schemas';
 
 export const STATUS_CHANNEL = 'trueiris:get-status';
@@ -21,6 +24,9 @@ export const STORAGE_CHANNELS = {
   delete: 'trueiris:storage:delete',
 } as const;
 
+export const TIMELINE_CHANNEL = 'trueiris:timeline:get';
+export const ACTIVITY_CHANNEL = 'trueiris:activity:set';
+
 /** Named, validated capabilities only; never expose generic IPC or credentials. */
 export interface DesktopBridge {
   getStatus(): Promise<DesktopStatus>;
@@ -28,6 +34,10 @@ export interface DesktopBridge {
   setStorageEnabled(enabled: boolean): Promise<StorageStatus>;
   exportData(): Promise<'saved' | 'cancelled' | 'failed'>;
   deleteData(): Promise<'deleted' | 'cancelled' | 'failed'>;
+  getTimeline(query: TimelineQuery): Promise<TimelineResult>;
+  setActivity(
+    activity: RecordedActivity | null,
+  ): Promise<RecordedActivity | null>;
   getSensor(): Promise<SensorSnapshot>;
   startSensor(provider: SensorProviderKind): Promise<SensorSnapshot>;
   stopSensor(): Promise<SensorSnapshot>;

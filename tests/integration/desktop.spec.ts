@@ -49,6 +49,8 @@ for (const connected of [true, false]) {
           'setStorageEnabled',
           'exportData',
           'deleteData',
+          'getTimeline',
+          'setActivity',
           'getSensor',
           'startSensor',
           'stopSensor',

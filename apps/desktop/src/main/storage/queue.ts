@@ -6,11 +6,13 @@ import {
   type Measurement,
   type SensorSnapshot,
   type StorageStatus,
+  type RecordedActivity,
 } from '@trueiris/schemas';
 
 export function serializeSnapshot(
   snapshot: SensorSnapshot,
   eventId = randomUUID(),
+  activity: RecordedActivity | null = null,
 ): Measurement | null {
   if (
     snapshot.phase !== 'running' ||
@@ -23,6 +25,7 @@ export function serializeSnapshot(
     new Date(Math.floor(Date.parse(time) / 1000) * 1000).toISOString();
   const parsed = measurementSchema.safeParse({
     ...snapshot.reading,
+    ...(activity ? { activity } : {}),
     timestamp: second(snapshot.reading.timestamp),
     startedAt: second(snapshot.startedAt),
     eventId,
@@ -88,8 +91,8 @@ export class MeasurementQueue {
     if (this.operation) await this.operation;
     return this.get();
   }
-  observe(snapshot: SensorSnapshot) {
-    const m = serializeSnapshot(snapshot);
+  observe(snapshot: SensorSnapshot, activity: RecordedActivity | null = null) {
+    const m = serializeSnapshot(snapshot, randomUUID(), activity);
     if (!m) return;
     const key = `${m.sessionId}:${m.timestamp}`;
     if (key === this.lastSecond) return;

@@ -62,6 +62,20 @@ export async function migrate(pool: Pool) {
         'INSERT INTO trueiris_migrations (version) VALUES (1)',
       );
     }
+    const timeline = await client.query(
+      'SELECT version FROM trueiris_migrations WHERE version = 2',
+    );
+    if (!timeline.rowCount) {
+      await client.query(
+        "ALTER TABLE measurements ADD COLUMN activity text CHECK (activity IN ('Coding','Studying','Reading','Meeting','Break','Other'))",
+      );
+      await client.query(
+        'CREATE INDEX measurements_user_source_time ON measurements (user_id,source,timestamp DESC)',
+      );
+      await client.query(
+        'INSERT INTO trueiris_migrations (version) VALUES (2)',
+      );
+    }
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');

@@ -26,6 +26,7 @@ describe('Tiger Data boundaries', () => {
       hrv_confidence: null,
       talking: null,
       signal_quality: 'good',
+      activity: null,
     });
     expect(row.timestamp).toBe('2026-10-03T12:00:00.000Z');
     expect(row).not.toHaveProperty('respirationRate');

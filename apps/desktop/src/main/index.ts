@@ -14,6 +14,8 @@ import {
   STATUS_CHANNEL,
   SENSOR_CHANNELS,
   STORAGE_CHANNELS,
+  TIMELINE_CHANNEL,
+  ACTIVITY_CHANNEL,
 } from '@trueiris/shared';
 import {
   loadWorkspaceEnvironment,
@@ -21,7 +23,13 @@ import {
 } from '@trueiris/shared/config';
 import { createLogger } from '@trueiris/shared/logging';
 import { getDesktopStatus } from './status';
-import { sensorStartSchema, type SensorSnapshot } from '@trueiris/schemas';
+import {
+  activitySchema,
+  timelineQuerySchema,
+  type RecordedActivity,
+  sensorStartSchema,
+  type SensorSnapshot,
+} from '@trueiris/schemas';
 import { SensorController, SensorStartError } from './sensor/controller';
 import {
   MeasurementQueue,
@@ -29,6 +37,7 @@ import {
   storageConfigured,
 } from './storage/queue';
 import { exportMeasurements } from './storage/files';
+import { getTimeline } from './timeline';
 import { MockSensorProvider } from './sensor/mock';
 import { PresageSensorProvider } from './sensor/presage';
 
@@ -43,6 +52,7 @@ const storage = new MeasurementQueue(
   createBatchSender(env.TRUEIRIS_API_URL, env.TRUEIRIS_INGEST_TOKEN),
 );
 let managingData = false;
+let activity: RecordedActivity | null = null;
 let exportAbort: AbortController | null = null;
 let exportOperation: Promise<void> | null = null;
 let lastPhase: SensorSnapshot['phase'] = 'off';
@@ -120,10 +130,14 @@ function createWindow() {
   );
   window.webContents.on('render-process-gone', (_event, details) => {
     logger.error({ event: 'renderer_stopped', reason: details.reason });
+    activity = null;
     void sensor.stop();
   });
   window.webContents.on('did-start-navigation', (details) => {
-    if (details.isMainFrame && !details.isSameDocument) void sensor.stop();
+    if (details.isMainFrame && !details.isSameDocument) {
+      activity = null;
+      void sensor.stop();
+    }
   });
   window.webContents.on('did-fail-load', (_event, code) =>
     logger.error({ event: 'renderer_load_failed', code }),
@@ -131,6 +145,7 @@ function createWindow() {
   window.once('ready-to-show', () => window.show());
   window.once('closed', () => {
     mainWindow = null;
+    activity = null;
     void sensor.stop();
   });
   if (!app.isPackaged && process.env.ELECTRON_RENDERER_URL) {
@@ -168,7 +183,7 @@ void app
         return new PresageSensorProvider(env.PRESAGE_API_KEY, spawnSensor);
       },
       (snapshot) => {
-        storage.observe(snapshot);
+        storage.observe(snapshot, activity);
         if (snapshot.phase !== lastPhase) {
           logger.info({
             event:
@@ -214,6 +229,19 @@ void app
     ipcMain.handle(SENSOR_CHANNELS.stop, (event) => {
       assertTrusted(event);
       return sensor.stop();
+    });
+    ipcMain.handle(TIMELINE_CHANNEL, (event, input: unknown) => {
+      assertTrusted(event);
+      return getTimeline(
+        env.TRUEIRIS_API_URL,
+        env.TRUEIRIS_INGEST_TOKEN,
+        timelineQuerySchema.parse(input),
+      );
+    });
+    ipcMain.handle(ACTIVITY_CHANNEL, (event, input: unknown) => {
+      assertTrusted(event);
+      activity = activitySchema.nullable().parse(input);
+      return activity;
     });
     ipcMain.handle(STORAGE_CHANNELS.get, (event) => {
       assertTrusted(event);

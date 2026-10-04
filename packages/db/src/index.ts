@@ -6,8 +6,12 @@ import {
   measurementSchema,
   exportCursorSchema,
   type Measurement,
+  type RecordedActivity,
+  type TimelineQuery,
+  type TimelineData,
   type IngestionAck,
 } from '@trueiris/schemas';
+import { queryTimeline } from './timeline';
 export { migrate } from './migration';
 
 /** Strip URL SSL switches so they cannot override strict TLS options in pg. */
@@ -31,7 +35,9 @@ export function databaseOptions(
   return {
     connectionString: url.toString(),
     max: 5,
-    connectionTimeoutMillis: 2500,
+    // Remote TLS/authentication can exceed the UI health request deadline.
+    // Keep establishment bounded while allowing the pool to become ready.
+    connectionTimeoutMillis: 5000,
     idleTimeoutMillis: 10_000,
     statement_timeout: 5000,
     ssl:
@@ -58,10 +64,12 @@ interface MeasurementRow {
   hrv_rmssd: number | null;
   hrv_confidence: number | null;
   talking: boolean | null;
+  activity: RecordedActivity | null;
   signal_quality: Measurement['signalQuality'];
 }
 export function deserializeMeasurement(row: MeasurementRow): Measurement {
   return measurementSchema.parse({
+    ...(row.activity != null ? { activity: row.activity } : {}),
     timestamp: row.timestamp.toISOString(),
     eventId: row.event_id,
     sessionId: row.session_id,
@@ -89,6 +97,7 @@ const selectMeasurements = `SELECT m.*, s.started_at FROM measurements m JOIN se
 
 export interface MeasurementStore {
   health(): Promise<boolean>;
+  timeline(userId: string, query: TimelineQuery): Promise<TimelineData>;
   ingest(userId: string, measurements: Measurement[]): Promise<IngestionAck>;
   exportPage(
     userId: string,
@@ -107,7 +116,7 @@ export class TigerStore implements MeasurementStore {
   async health() {
     try {
       const result = await this.pool
-        .query(`SELECT EXISTS (SELECT 1 FROM trueiris_migrations WHERE version = 1) AS ready,
+        .query(`SELECT EXISTS (SELECT 1 FROM trueiris_migrations WHERE version = 2) AS ready,
         EXISTS (SELECT 1 FROM timescaledb_information.hypertables WHERE hypertable_name = 'measurements' AND hypertable_schema = 'public') AS hypertable`);
       return (
         result.rows[0]?.ready === true && result.rows[0]?.hypertable === true
@@ -177,9 +186,9 @@ export class TigerStore implements MeasurementStore {
         source: Measurement['source'];
       }>(
         `INSERT INTO measurements
-        (timestamp,event_id,user_id,session_id,source,pulse_rate,pulse_confidence,breathing_rate,breathing_confidence,hrv_rmssd,hrv_confidence,talking,signal_quality)
-        SELECT timestamp,"eventId",$2,"sessionId",source,"pulseRate","pulseConfidence","respirationRate","respirationConfidence","hrvRmssd","hrvConfidence",talking,"signalQuality"
-        FROM jsonb_to_recordset($1::jsonb) AS x(timestamp timestamptz,"eventId" uuid,"sessionId" uuid,source text,"pulseRate" double precision,"pulseConfidence" double precision,"respirationRate" double precision,"respirationConfidence" double precision,"hrvRmssd" double precision,"hrvConfidence" double precision,talking boolean,"signalQuality" text)
+        (timestamp,event_id,user_id,session_id,source,pulse_rate,pulse_confidence,breathing_rate,breathing_confidence,hrv_rmssd,hrv_confidence,talking,signal_quality,activity)
+        SELECT timestamp,"eventId",$2,"sessionId",source,"pulseRate","pulseConfidence","respirationRate","respirationConfidence","hrvRmssd","hrvConfidence",talking,"signalQuality",activity
+        FROM jsonb_to_recordset($1::jsonb) AS x(timestamp timestamptz,"eventId" uuid,"sessionId" uuid,source text,"pulseRate" double precision,"pulseConfidence" double precision,"respirationRate" double precision,"respirationConfidence" double precision,"hrvRmssd" double precision,"hrvConfidence" double precision,talking boolean,"signalQuality" text,activity text)
         ON CONFLICT DO NOTHING RETURNING timestamp,session_id,source`,
         [JSON.stringify(measurements), userId],
       );
@@ -237,6 +246,9 @@ export class TigerStore implements MeasurementStore {
       }
       return { accepted, duplicates: measurements.length - accepted };
     });
+  }
+  async timeline(userId: string, query: TimelineQuery) {
+    return queryTimeline(this.pool, userId, query);
   }
   async exportPage(userId: string, cursor?: string) {
     const parts = cursor

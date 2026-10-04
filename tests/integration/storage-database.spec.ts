@@ -8,7 +8,7 @@ import { TigerStore } from '../../packages/db/src/index';
 import { buildApp } from '../../apps/api/src/app';
 import { launchSensorDesktop } from './helpers';
 
-test('built desktop saves labeled mock measurements and epochs through the real API into Timescale', async () => {
+test('built desktop saves labeled mock measurements and epochs through the real API into Timescale and displays their timeline', async () => {
   test.skip(
     process.env.TRUEIRIS_TEST_DATABASE !== 'true',
     'Run pnpm test:persistence with a configured Timescale database.',
@@ -28,7 +28,9 @@ test('built desktop saves labeled mock measurements and epochs through the real 
     TRUEIRIS_INGEST_TOKEN: token,
   });
   try {
-    expect(await store.health()).toBe(true);
+    await expect.poll(() => store.health(), { timeout: 15_000 }).toBe(true);
+    await page.getByLabel('CURRENT ACTIVITY').selectOption('Coding');
+    await expect(page.getByLabel('CURRENT ACTIVITY')).toHaveValue('Coding');
     await page.getByRole('link', { name: 'Settings', exact: true }).click();
     await expect(page.getByText('Connected', { exact: true })).toHaveCount(2);
     await page
@@ -59,6 +61,7 @@ test('built desktop saves labeled mock measurements and epochs through the real 
       rows.measurements.every(
         (m) =>
           m.source === 'mock' &&
+          m.activity === 'Coding' &&
           m.pulseRate !== undefined &&
           m.timestamp.endsWith('.000Z'),
       ),
@@ -84,6 +87,39 @@ test('built desktop saves labeled mock measurements and epochs through the real 
           e.coverage > 0,
       ),
     ).toBe(true);
+    await page.getByRole('link', { name: 'Timeline', exact: true }).click();
+    await page.getByLabel('Display timezone').selectOption('UTC');
+    await expect(
+      page.getByRole('heading', {
+        name: 'No saved live readings in this period.',
+      }),
+    ).toBeVisible();
+    await page.getByLabel('History source').selectOption('mock');
+    const chart = page.getByRole('application', {
+      name: 'Today timeline chart',
+    });
+    await expect(chart).toBeVisible();
+    await chart.focus();
+    await page.keyboard.press('Enter');
+    await expect(
+      page.getByRole('heading', { name: 'Selected period', exact: true }),
+    ).toBeVisible();
+    await expect(
+      page
+        .getByRole('region', { name: 'Period details' })
+        .getByText('Coding', { exact: true }),
+    ).toBeVisible();
+    const timeline = await store.timeline(userId, {
+      start: rows.measurements[0]!.timestamp,
+      end: new Date(
+        Date.parse(rows.measurements.at(-1)!.timestamp) + 1000,
+      ).toISOString(),
+      source: 'mock',
+    });
+    expect(timeline.summary.count).toBe(rows.measurements.length);
+    expect(timeline.activities.every((p) => p.activity === 'Coding')).toBe(
+      true,
+    );
   } finally {
     await app.close();
     try {

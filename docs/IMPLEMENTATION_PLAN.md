@@ -8,7 +8,7 @@ Complete one feature, validate, review the diff, update documentation, commit, p
 | P0       | Presage sensor (completed)    | Genuine pulse from camera on demo machine; typed normalization; quality/error states; labeled mock provider; permission and native packaging verification |
 | P0       | Live UI (completed)           | Dominant pulse; breathing/HRV when available; confidence; session/context; reliable reactive updates                                                      |
 | P0       | Tiger persistence (completed) | Authenticated scoped ingestion; bounded batch/retry; idempotency; timestamp tests; epoch computation; migrations                                          |
-| P0       | Timeline                      | Trends/context/gaps; period selection; no invented readings; timezone handling                                                                            |
+| P0       | Timeline (completed)          | Trends/context/gaps; period selection; no invented readings; timezone handling                                                                            |
 | P0       | Context engine                | Supported foreground app/idle provider; consent; interval segmentation; manual override; unsupported-platform fallback                                    |
 | P0       | Personal baselines            | Activity/time-specific comparisons; minimum coverage/history; no medical thresholds; source-aware statistics                                              |
 | P0       | Gemini agent                  | Allowlisted Zod tools, scoped SQL, bounded multi-step calls; every numeric claim backed by evidence                                                       |
@@ -51,3 +51,7 @@ The live view displays pulse, respiration, HRV, and per-metric confidence with e
 ## Feature 4 verification
 
 Authenticated ingestion persists UTC measurements to a Timescale hypertable and updates scoped 30-second epochs atomically. Tests cover serialization, quality/missing values, ownership/provenance, idempotency, concurrency, rollback, queue caps/backoff, export and deletion replay protection. The built desktop is also verified with a mock provider against the real configured Tiger Data service using isolated fixture users. Saving remains opt-in and off on launch; no raw media is stored. See [Tiger Data setup](TIGER_DATA_SETUP.md).
+
+## Feature 5 verification
+
+Today shows saved activity periods, pulse/respiration/HRV trends, recorded manual context changes and signal gaps. Queries and display keep live/mock/demo-seed sources separate, honor local-day/DST boundaries, and expose exact selected-period evidence. Keyboard, drag and accessible period controls support selection and zoom. Unit/API tests, built desktop integration, real scoped Timescale SQL (including display limits), and built desktop → Tiger Data → timeline verification cover the feature. Automatic application detection remains off until Feature 6. See [timeline behavior](TIMELINE.md).

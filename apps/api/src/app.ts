@@ -7,6 +7,8 @@ import {
   exportPageSchema,
   exportCursorSchema,
   ingestionAckSchema,
+  timelineQuerySchema,
+  timelineDataSchema,
 } from '@trueiris/schemas';
 import { loggerOptions } from '@trueiris/shared/logging';
 import { SessionConflict, type MeasurementStore } from '@trueiris/db';
@@ -89,6 +91,18 @@ export function buildApp(logLevel = 'info', options: ApiOptions = {}) {
         return reply
           .code(503)
           .send({ error: 'Storage is temporarily unavailable' });
+      }
+    });
+    privateApp.get('/timeline', async (request, reply) => {
+      const query = timelineQuerySchema.safeParse(request.query);
+      if (!query.success)
+        return reply.code(400).send({ error: 'Invalid timeline request' });
+      try {
+        return timelineDataSchema.parse(
+          await store!.timeline(userId!, query.data),
+        );
+      } catch {
+        return reply.code(503).send({ error: 'Timeline is unavailable' });
       }
     });
     privateApp.get('/data/export', async (request, reply) => {

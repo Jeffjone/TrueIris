@@ -47,6 +47,7 @@ const measurement = {
 };
 function fakeStore(): MeasurementStore {
   return {
+    timeline: vi.fn(),
     health: vi.fn(async () => true),
     ingest: vi.fn(async () => ({ accepted: 1, duplicates: 0 })),
     exportPage: vi.fn(async () => ({
@@ -245,6 +246,77 @@ it('rejects malformed cursors and oversized payloads before database access', as
       ).statusCode,
     ).toBe(413);
     expect(store.ingest).not.toHaveBeenCalled();
+  } finally {
+    await app.close();
+  }
+});
+
+it('authenticates and scopes bounded timeline reads, rejecting ownership overrides', async () => {
+  const store = fakeStore();
+  const query = {
+    start: '2026-10-04T00:00:00.000Z',
+    end: '2026-10-04T01:00:00.000Z',
+    source: 'mock',
+  };
+  const empty = {
+    count: 0,
+    mean: null,
+    min: null,
+    max: null,
+    confidence: null,
+  };
+  const data = {
+    range: query,
+    points: [],
+    activities: [],
+    gaps: [],
+    summary: {
+      count: 0,
+      observedSeconds: 0,
+      sessions: 0,
+      pulse: empty,
+      respiration: empty,
+      hrv: empty,
+    },
+    limited: false,
+  };
+  vi.mocked(store.timeline).mockResolvedValue(
+    data as Awaited<ReturnType<MeasurementStore['timeline']>>,
+  );
+  const app = buildApp('silent', { store, token, userId });
+  const url = '/timeline?' + new URLSearchParams(query);
+  try {
+    expect((await app.inject(url)).statusCode).toBe(401);
+    expect(
+      (
+        await app.inject({ url, headers: { authorization: `Bearer ${token}` } })
+      ).json(),
+    ).toEqual(data);
+    expect(store.timeline).toHaveBeenCalledWith(userId, query);
+    for (const bad of [
+      url + '&userId=forged',
+      url.replace('source=mock', 'source=mixed'),
+      url.replace('01%3A00', '00%3A00'),
+    ]) {
+      expect(
+        (
+          await app.inject({
+            url: bad,
+            headers: { authorization: `Bearer ${token}` },
+          })
+        ).statusCode,
+      ).toBe(400);
+    }
+    expect(store.timeline).toHaveBeenCalledTimes(1);
+    vi.mocked(store.timeline).mockRejectedValue(
+      new Error('private SQL secret'),
+    );
+    const failed = await app.inject({
+      url,
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(failed.statusCode).toBe(503);
+    expect(failed.body).not.toMatch(/private|SQL|secret/);
   } finally {
     await app.close();
   }

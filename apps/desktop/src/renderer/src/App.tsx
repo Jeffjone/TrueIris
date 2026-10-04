@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSensor, sensorLabel, type SensorControls } from './sensor';
 import { LiveView } from './live/LiveView';
+import { TimelineView } from './timeline/TimelineView';
 import type { Activity } from './live/presentation';
 import {
   StoragePanel,
@@ -152,6 +153,20 @@ export function App() {
   const sensor = useSensor();
   const storage = useStorage();
   const [activity, setActivity] = useState<Activity>('');
+  const [activityError, setActivityError] = useState(false);
+  const activityRequest = useRef(0);
+  async function updateActivity(value: Activity) {
+    const request = ++activityRequest.current;
+    try {
+      const saved = await window.trueiris!.setActivity(value || null);
+      if (request === activityRequest.current) {
+        setActivity(saved ?? '');
+        setActivityError(false);
+      }
+    } catch {
+      if (request === activityRequest.current) setActivityError(true);
+    }
+  }
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -210,22 +225,21 @@ export function App() {
           <Route
             path="/live"
             element={
-              <LiveView
-                sensor={sensor}
-                activity={activity}
-                onActivity={setActivity}
-              />
+              <>
+                {activityError && (
+                  <p className="muted">
+                    Activity could not be updated. Try selecting it again.
+                  </p>
+                )}
+                <LiveView
+                  sensor={sensor}
+                  activity={activity}
+                  onActivity={(value) => void updateActivity(value)}
+                />
+              </>
             }
           />
-          <Route
-            path="/timeline"
-            element={
-              <EmptyPage
-                title="The shape of your day."
-                description="Your activity and measurements will form a timeline here. There’s no history yet."
-              />
-            }
-          />
+          <Route path="/timeline" element={<TimelineView />} />
           <Route
             path="/patterns"
             element={
