@@ -25,9 +25,9 @@ The overall label is a TrueIris display heuristic: **Excellent** requires all ac
 
 ## Explicit mock provider
 
-Choose **Mock · no camera** and **Start mock sensor**. The UI labels the stream, every reading has `source: mock`, and no native SDK, camera permission, or Presage connection is used. There is no automatic mock fallback.
+Choose **Mock · no camera** and **Start mock sensor**. The UI labels the stream, every reading has `source: mock`, and no native SDK, camera permission, or Presage connection is used. Outside dedicated demo mode, there is no automatic mock fallback.
 
-`TRUEIRIS_SENSOR_PROVIDER=presage|mock` chooses the initial selector only. `TRUEIRIS_MOCK_SENSOR_SCENARIO` supports `steady`, `no_face`, `low_confidence`, `lighting`, `motion`, `talking`, `network`, `no_camera`, and `permission_denied`. Restart after changing scenarios. `TRUEIRIS_DEMO_MODE` is independent and does not start capture or select fallback.
+`TRUEIRIS_SENSOR_PROVIDER=presage|mock` chooses the initial selector only. `TRUEIRIS_MOCK_SENSOR_SCENARIO` supports `steady`, `no_face`, `low_confidence`, `lighting`, `motion`, `talking`, `network`, `no_camera`, and `permission_denied`. Restart after changing scenarios. `TRUEIRIS_DEMO_MODE` does not start capture. Feature 20 allows a clearly labeled mock fallback only after an explicitly started Presage session fails in demo mode; see [demo mode](DEMO_MODE.md).
 
 ## Failure states
 

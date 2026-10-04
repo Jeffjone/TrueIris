@@ -1,3 +1,6 @@
+import { setTransportMode } from './transport';
+import { privateFetch as fetch } from './transport';
+import { DemoClient } from './demo';
 import { ExperimentClient } from './experiments';
 import {
   app,
@@ -13,6 +16,7 @@ import {
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
+  DEMO_CHANNELS,
   EXPERIMENT_CHANNELS,
   VOICE_CHANNELS,
   REASONING_CHANNELS,
@@ -65,6 +69,7 @@ import { PresageSensorProvider } from './sensor/presage';
 
 if (!app.isPackaged) loadWorkspaceEnvironment();
 const env = parseEnvironment(process.env);
+setTransportMode(env.TRUEIRIS_DEMO_MODE);
 const reasoning = new ReasoningClient(
   env.TRUEIRIS_API_URL,
   env.TRUEIRIS_INGEST_TOKEN,
@@ -74,6 +79,11 @@ const directory = dirname(fileURLToPath(import.meta.url));
 let mainWindow: BrowserWindow | null = null;
 let sensor: SensorController;
 let context: ContextController;
+const demo = new DemoClient(
+  env.TRUEIRIS_DEMO_MODE,
+  env.TRUEIRIS_API_URL,
+  env.TRUEIRIS_INGEST_TOKEN,
+);
 const experiments = new ExperimentClient(
   env.TRUEIRIS_API_URL,
   env.TRUEIRIS_INGEST_TOKEN,
@@ -126,6 +136,15 @@ function storageStatus() {
   };
 }
 async function enableSaving(enabled: boolean) {
+  if (enabled && env.TRUEIRIS_DEMO_MODE) {
+    const status = await getDesktopStatus(
+      env.TRUEIRIS_API_URL,
+      app.getVersion(),
+      true,
+    );
+    if (!status.demo?.enabled)
+      throw new Error('Start the API in demo mode before enabling demo saving');
+  }
   context.setSaving(enabled);
   await Promise.all([
     storage.setEnabled(enabled),
@@ -296,10 +315,12 @@ void app
       () => contextStorage.get(),
     );
     powerMonitor.on('suspend', () => {
+      void sensor?.stop();
       voice.stop();
       context.stop();
     });
     powerMonitor.on('lock-screen', () => {
+      void sensor?.stop();
       voice.stop();
       context.stop();
     });
@@ -333,7 +354,11 @@ void app
       env.TRUEIRIS_SENSOR_PROVIDER,
       async (kind) => {
         if (kind === 'mock')
-          return new MockSensorProvider(env.TRUEIRIS_MOCK_SENSOR_SCENARIO);
+          return new MockSensorProvider(
+            env.TRUEIRIS_DEMO_MODE
+              ? 'steady'
+              : env.TRUEIRIS_MOCK_SENSOR_SCENARIO,
+          );
         if (!env.PRESAGE_API_KEY) throw new SensorStartError('missing_key');
         if (
           !['darwin-arm64', 'linux-x64', 'linux-arm64', 'win32-x64'].includes(
@@ -372,6 +397,7 @@ void app
         if (mainWindow && !mainWindow.webContents.isDestroyed())
           mainWindow.webContents.send(SENSOR_CHANNELS.update, snapshot);
       },
+      env.TRUEIRIS_DEMO_MODE,
     );
     // Renderer microphone access is leased only to the trusted frame after an explicit voice start.
     // Camera, screen capture, other frames, and all other permissions remain denied.
@@ -402,6 +428,15 @@ void app
           details.mediaType === 'audio',
         ),
     );
+    ipcMain.handle(DEMO_CHANNELS.get, (event) => {
+      assertTrusted(event);
+      return demo.get();
+    });
+    ipcMain.handle(DEMO_CHANNELS.prepare, (event) => {
+      assertTrusted(event);
+      if (managingData) throw new Error('Data action in progress');
+      return demo.get(true);
+    });
     ipcMain.handle(EXPERIMENT_CHANNELS.action, (event, input: unknown) => {
       assertTrusted(event);
       if (managingData) throw new Error('Data action in progress');

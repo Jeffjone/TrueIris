@@ -46,6 +46,8 @@ for (const connected of [true, false]) {
       }));
       expect(isolation).toEqual({
         bridgeKeys: [
+          'getDemo',
+          'prepareDemo',
           'experimentAction',
           'exportExperiment',
           'getVoice',

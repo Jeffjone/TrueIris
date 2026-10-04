@@ -97,7 +97,10 @@ export const sensorMessages: Record<
 export function sensorLabel(snapshot: SensorSnapshot): string {
   if (snapshot.phase === 'off') return 'Sensing is off';
   if (snapshot.phase === 'stopping') return 'Stopping sensing';
-  if (snapshot.provider === 'mock') return 'Mock sensor · no camera';
+  if (snapshot.provider === 'mock')
+    return snapshot.fallbackIssue
+      ? 'Demo fallback · simulated · no camera'
+      : 'Mock sensor · no camera';
   if (snapshot.phase === 'starting') return 'Starting camera';
   if (snapshot.phase === 'running') return 'Camera sensing active';
   return 'Camera session failed';

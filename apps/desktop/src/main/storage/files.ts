@@ -1,3 +1,4 @@
+import { privateFetch as fetch } from '../transport';
 import { open, unlink, rename } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as wait } from 'node:timers/promises';

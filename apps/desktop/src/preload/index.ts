@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import {
+  DEMO_CHANNELS,
   EXPERIMENT_CHANNELS,
   VOICE_CHANNELS,
   REASONING_CHANNELS,
@@ -17,6 +18,7 @@ import {
   voiceAudioSchema,
   voiceEventSchema,
   voiceSnapshotSchema,
+  demoOutcomeSchema,
   experimentActionSchema,
   experimentOutcomeSchema,
   experimentIdSchema,
@@ -39,6 +41,10 @@ import {
 } from '@trueiris/schemas';
 
 const bridge: DesktopBridge = {
+  getDemo: async () =>
+    demoOutcomeSchema.parse(await ipcRenderer.invoke(DEMO_CHANNELS.get)),
+  prepareDemo: async () =>
+    demoOutcomeSchema.parse(await ipcRenderer.invoke(DEMO_CHANNELS.prepare)),
   experimentAction: async (action) =>
     experimentOutcomeSchema.parse(
       await ipcRenderer.invoke(

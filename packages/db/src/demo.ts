@@ -32,8 +32,18 @@ export class TigerDemo implements DemoStore {
       : null;
   }
   async seed(userId: string, now = new Date()) {
+    const acceptedAt = Date.now();
     const generated = generateDemo(userId, now);
     return this.transaction(userId, async (client) => {
+      const barrier = await client.query(
+        'SELECT deleted_before FROM users WHERE id=$1',
+        [userId],
+      );
+      if (
+        barrier.rows[0]?.deleted_before &&
+        acceptedAt <= barrier.rows[0].deleted_before.getTime()
+      )
+        throw new Error('Demo preparation predates deletion');
       const previous = await client.query(
         "SELECT data FROM demo_datasets WHERE user_id=$1 AND source='demo_seed'",
         [userId],

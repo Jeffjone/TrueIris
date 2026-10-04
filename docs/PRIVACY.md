@@ -73,3 +73,7 @@ Creating a definition or recording a labeled session explicitly saves the hypoth
 ## Feature 19 generated demonstration history
 
 Seeding uses a separate demo identity and fixed `demo_seed` provenance. It stores only generated vitals, desktop metadata without titles, authored sample summaries/patterns and fictional experiment ratings. No camera, provider call, user prompt or personal recording enters the generator. Clearing targets only that source and owner; refresh replaces only managed sample artifacts. Keyword retrieval of demo summaries is explicitly labeled and never returns real episodic memories. See [demo data controls](DEMO_DATA.md).
+
+## Feature 20 explicit demo
+
+The dedicated API binds its existing private token to a separate demo identity. Startup generates sample history, not capture. Main asserts its mode on private requests; the server rejects a mismatched client before operations. Camera, microphone, desktop context, titles and saving retain explicit controls. Demo-only Presage failure replacement stops the real provider, assigns a fresh mock session and visibly labels simulation; stop/lock/suspend/reload/quit cancel replacement. The presentation preserves capture/saving/provenance indicators while diagnostics show only safe availability states. Sample question evidence is qualified generated data; live providers still have their existing transport/retention boundaries. See [demo walkthrough and validation](DEMO_MODE.md).

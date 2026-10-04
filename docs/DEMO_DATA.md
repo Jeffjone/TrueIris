@@ -23,7 +23,7 @@ Seeding is one owner-locked transaction: readers cannot observe a partial datase
 
 The `search_memories` tool can retrieve authored sample summaries by keyword only when the selected source is `demo_seed` and its authenticated owner has a manifest. Its evidence explicitly states that semantic embeddings and real episodic memory remain unimplemented. This prepares demonstrable episode metadata without claiming Feature 11 is complete. Existing similarity retrieval remains activity/recency based. Pattern cards describe generated associations with linked sessions and dates; this does not implement the general personal-pattern mining features.
 
-Feature 20 adds automatic preparation and the dedicated presentation UI. Outside that mode, ordinary capture, history and provider behavior stay under their existing controls.
+Feature 20 now adds automatic preparation and the dedicated presentation UI; see [demo mode](DEMO_MODE.md). Outside that mode, ordinary capture, history and provider behavior stay under their existing controls.
 
 ## Validation
 

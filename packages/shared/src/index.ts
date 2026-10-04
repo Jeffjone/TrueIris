@@ -1,4 +1,5 @@
 import type {
+  DemoOutcome,
   VoiceOptions,
   VoiceAudio,
   VoiceEvent,
@@ -22,6 +23,10 @@ import type {
   RecordedActivity,
 } from '@trueiris/schemas';
 
+export const DEMO_CHANNELS = {
+  get: 'trueiris:demo:get',
+  prepare: 'trueiris:demo:prepare',
+} as const;
 export const EXPERIMENT_CHANNELS = {
   action: 'trueiris:experiments:action',
   export: 'trueiris:experiments:export',
@@ -70,6 +75,8 @@ export const ACTIVITY_CHANNEL = 'trueiris:activity:set';
 
 /** Named, validated capabilities only; never expose generic IPC or credentials. */
 export interface DesktopBridge {
+  getDemo(): Promise<DemoOutcome>;
+  prepareDemo(): Promise<DemoOutcome>;
   experimentAction(action: ExperimentAction): Promise<ExperimentOutcome>;
   exportExperiment(id: string): Promise<'saved' | 'cancelled' | 'failed'>;
   getVoice(): Promise<VoiceSnapshot>;

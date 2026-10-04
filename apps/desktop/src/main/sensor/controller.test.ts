@@ -136,3 +136,112 @@ describe('sensor lifecycle controller', () => {
     expect(controller.get()).toMatchObject({ issue: 'stale', reading: null });
   });
 });
+describe('explicit demo fallback', () => {
+  function demo(
+    factory: (kind: 'mock' | 'presage') => Promise<SensorProvider>,
+  ) {
+    const controller = new SensorController('presage', factory, () => {}, true);
+    controllers.push(controller);
+    return controller;
+  }
+  it('uses a new correctly labeled mock session after missing credentials, never before explicit start', async () => {
+    const mock = provider(),
+      factory = vi.fn(async (kind) => {
+        if (kind === 'presage') throw new SensorStartError('missing_key');
+        return mock.instance;
+      });
+    const controller = demo(factory);
+    expect(factory).not.toHaveBeenCalled();
+    expect(await controller.start('presage')).toMatchObject({
+      provider: 'mock',
+      phase: 'running',
+      fallbackIssue: 'missing_key',
+    });
+    mock.emit(mock.reading());
+    expect(controller.get().reading?.source).toBe('mock');
+    await controller.stop();
+    expect(controller.get()).toMatchObject({
+      phase: 'off',
+      fallbackIssue: null,
+    });
+  });
+  it('retains healthy genuine readings and tears down a failed Presage session before starting a new mock session', async () => {
+    const live = provider(),
+      mock = provider();
+    const controller = demo(async (kind) =>
+      kind === 'presage' ? live.instance : mock.instance,
+    );
+    await controller.start('presage');
+    live.emit(live.reading('live'));
+    const realId = controller.get().sessionId;
+    expect(controller.get()).toMatchObject({
+      provider: 'presage',
+      fallbackIssue: null,
+      reading: { source: 'live' },
+    });
+    live.emit({ kind: 'error', issue: 'network' });
+    await vi.waitFor(() => expect(controller.get().provider).toBe('mock'));
+    expect(live.instance.stop).toHaveBeenCalledOnce();
+    expect(controller.get().sessionId).not.toBe(realId);
+    mock.emit(mock.reading());
+    live.emit(live.reading('live'));
+    expect(controller.get()).toMatchObject({
+      provider: 'mock',
+      fallbackIssue: 'network',
+      reading: { source: 'mock' },
+    });
+  });
+  it('stops a pending fallback and refuses replacement if teardown fails', async () => {
+    const live = provider(),
+      mock = provider();
+    let release: () => void = () => {};
+    live.instance.stop = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          release = resolve;
+        }),
+    );
+    const factory = vi.fn(async (kind) =>
+        kind === 'presage' ? live.instance : mock.instance,
+      ),
+      controller = demo(factory);
+    await controller.start('presage');
+    live.emit({ kind: 'error', issue: 'network' });
+    await vi.waitFor(() => expect(live.instance.stop).toHaveBeenCalled());
+    const stopped = controller.stop();
+    release();
+    await stopped;
+    expect(controller.get().phase).toBe('off');
+    expect(factory).toHaveBeenCalledTimes(1);
+    const failed = provider();
+    failed.instance.stop = vi.fn(async () => {
+      throw new Error('teardown');
+    });
+    const unsafeFactory = vi.fn(async (kind) =>
+        kind === 'presage' ? failed.instance : mock.instance,
+      ),
+      unsafe = demo(unsafeFactory);
+    await unsafe.start('presage');
+    failed.emit({ kind: 'error', issue: 'network' });
+    await vi.waitFor(() => expect(unsafe.get().issue).toBe('processing'));
+    expect(unsafeFactory).toHaveBeenCalledTimes(1);
+  });
+  it('replaces a stale real stream in demo mode, but does not replace poor-quality live readings', async () => {
+    vi.useFakeTimers();
+    const live = provider(),
+      mock = provider(),
+      controller = demo(async (kind) =>
+        kind === 'presage' ? live.instance : mock.instance,
+      );
+    await controller.start('presage');
+    live.emit({ kind: 'issue', issue: 'lighting' });
+    await vi.advanceTimersByTimeAsync(6000);
+    expect(controller.get().provider).toBe('presage');
+    live.emit(live.reading('live'));
+    await vi.advanceTimersByTimeAsync(6000);
+    expect(controller.get()).toMatchObject({
+      provider: 'mock',
+      fallbackIssue: 'stale',
+    });
+  });
+});

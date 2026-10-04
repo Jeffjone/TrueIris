@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useSearchParams } from 'react-router-dom';
 import type {
   TimelineData,
   TimelineQuery,
@@ -197,10 +197,12 @@ function TimelineDay({
   now,
   source,
   setSource,
+  demo = false,
 }: {
   zone: string;
   now: number;
   source: TimelineQuery['source'];
+  demo?: boolean;
   setSource: (source: TimelineQuery['source']) => void;
 }) {
   const day = dayBounds(now, zone);
@@ -239,26 +241,32 @@ function TimelineDay({
   return (
     <>
       <div className="timeline-toolbar">
-        <label>
-          History source
-          <select
-            aria-label="History source"
-            value={source}
-            onChange={(e) => {
-              setSelection(null);
-              setZoom(null);
-              setDraft({
-                start: day.start,
-                end: Math.max(day.start + 1, Math.min(now, day.end)),
-              });
-              setSource(e.target.value as TimelineQuery['source']);
-            }}
-          >
-            <option value="live">Live · Presage</option>
-            <option value="mock">Mock · simulated</option>
-            <option value="demo_seed">Demo seed · sample data</option>
-          </select>
-        </label>
+        {demo ? (
+          <span className="pill">
+            demo_seed · generated sample history · UTC
+          </span>
+        ) : (
+          <label>
+            History source
+            <select
+              aria-label="History source"
+              value={source}
+              onChange={(e) => {
+                setSelection(null);
+                setZoom(null);
+                setDraft({
+                  start: day.start,
+                  end: Math.max(day.start + 1, Math.min(now, day.end)),
+                });
+                setSource(e.target.value as TimelineQuery['source']);
+              }}
+            >
+              <option value="live">Live · Presage</option>
+              <option value="mock">Mock · simulated</option>
+              <option value="demo_seed">Demo seed · sample data</option>
+            </select>
+          </label>
+        )}
         <button
           className="sensor-button"
           onClick={() => setRevision(revision + 1)}
@@ -473,15 +481,33 @@ function TimelineDay({
     </>
   );
 }
-export function TimelineView() {
+export function TimelineView({ demo = false }: { demo?: boolean }) {
+  const [params, setParams] = useSearchParams();
   const localZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const [zone, setZone] = useState(localZone);
-  const [source, setSource] = useState<TimelineQuery['source']>('live');
+  const [zone, setZone] = useState(demo ? 'UTC' : localZone);
+  const [source, setSource] = useState<TimelineQuery['source']>(
+    demo ? 'demo_seed' : 'live',
+  );
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 15_000);
     return () => window.clearInterval(timer);
   }, []);
+  const dayParam = params.get('day');
+  const selectedDay =
+    demo &&
+    dayParam &&
+    /^\d{4}-\d{2}-\d{2}$/.test(dayParam) &&
+    Number.isFinite(Date.parse(dayParam + 'T00:00:00Z')) &&
+    new Date(dayParam + 'T00:00:00Z').toISOString().slice(0, 10) === dayParam &&
+    dayParam <= dateKey(now, 'UTC') &&
+    dayParam >= dateKey(now - 8 * 86400_000, 'UTC')
+      ? dayParam
+      : null;
+  const viewNow =
+    selectedDay && selectedDay !== dateKey(now, 'UTC')
+      ? Date.parse(selectedDay + 'T23:59:59.999Z')
+      : now;
   const zones = Array.from(
     new Set([localZone, 'UTC', ...Intl.supportedValuesOf('timeZone')]),
   );
@@ -490,33 +516,50 @@ export function TimelineView() {
       <div className="page-heading">
         <div>
           <p className="eyebrow">THE SHAPE OF YOUR DAY</p>
-          <h1>Today’s timeline.</h1>
+          <h1>{demo ? 'Sample history.' : 'Today’s timeline.'}</h1>
           <p className="muted">
             {new Intl.DateTimeFormat('en-US', {
               timeZone: zone,
               dateStyle: 'full',
-            }).format(now)}
+            }).format(viewNow)}
           </p>
         </div>
       </div>
       <div className="timeline-toolbar">
-        <label>
-          Display timezone
-          <select
-            aria-label="Display timezone"
-            value={zone}
-            onChange={(e) => setZone(e.target.value)}
-          >
-            {zones.map((z) => (
-              <option key={z}>{z}</option>
-            ))}
-          </select>
-        </label>
+        {demo ? (
+          <label>
+            Sample day (UTC)
+            <input
+              aria-label="Sample day"
+              type="date"
+              min={dateKey(now - 8 * 86400_000, 'UTC')}
+              max={dateKey(now, 'UTC')}
+              value={selectedDay ?? dateKey(now, 'UTC')}
+              onChange={(e) =>
+                setParams(e.target.value ? { day: e.target.value } : {})
+              }
+            />
+          </label>
+        ) : (
+          <label>
+            Display timezone
+            <select
+              aria-label="Display timezone"
+              value={zone}
+              onChange={(e) => setZone(e.target.value)}
+            >
+              {zones.map((z) => (
+                <option key={z}>{z}</option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
       <TimelineDay
-        key={`${zone}:${dateKey(now, zone)}`}
+        key={`${zone}:${dateKey(viewNow, zone)}`}
         zone={zone}
-        now={now}
+        now={viewNow}
+        demo={demo}
         source={source}
         setSource={setSource}
       />

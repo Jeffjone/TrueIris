@@ -1,3 +1,4 @@
+import { DemoService } from './demo';
 import websocket from '@fastify/websocket';
 import { VoiceService } from './voice/service';
 import type { VoiceProvider } from './voice/provider';
@@ -7,6 +8,7 @@ import Fastify, { LogController } from 'fastify';
 import { timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import {
+  demoOutcomeSchema,
   experimentActionSchema,
   experimentOutcomeSchema,
   askRequestSchema,
@@ -34,6 +36,7 @@ import {
 } from '@trueiris/db';
 
 interface ApiOptions {
+  demoMode?: boolean;
   experiments?: ExperimentStore;
   voice?: VoiceProvider;
   reasoning?: ReasoningProvider;
@@ -49,6 +52,11 @@ export function buildApp(logLevel = 'info', options: ApiOptions = {}) {
     bodyLimit: 256 * 1024,
   });
   const { store, token, userId, reasoning } = options;
+  const demo = options.demoMode ? new DemoService(store, userId) : null;
+  if (demo)
+    app.addHook('onReady', async () => {
+      void demo.prepare();
+    });
   const agent =
     store && userId && reasoning
       ? new AgentService(reasoning, store, userId)
@@ -69,6 +77,7 @@ export function buildApp(logLevel = 'info', options: ApiOptions = {}) {
       service: 'trueiris-api',
       status: 'ok',
       timestamp: new Date().toISOString(),
+      ...(demo ? { demo: { enabled: true, state: demo.state } } : {}),
       integrations: {
         database: store && (await store.health()) ? 'ready' : 'unavailable',
         reasoning: reasoning
@@ -99,6 +108,12 @@ export function buildApp(logLevel = 'info', options: ApiOptions = {}) {
         windowStart = Date.now();
         requests = 0;
       }
+      const requestedMode = request.headers['x-trueiris-mode'];
+      if (
+        (demo && requestedMode !== 'demo') ||
+        (!demo && requestedMode === 'demo')
+      )
+        return reply.code(409).send({ error: 'API mode mismatch' });
       // Single-user token quota, unaffected by attacker-controlled IP headers.
       if (++requests > 180)
         return reply
@@ -108,6 +123,16 @@ export function buildApp(logLevel = 'info', options: ApiOptions = {}) {
       if (!store)
         return reply.code(503).send({ error: 'Storage is unavailable' });
     });
+    if (demo) {
+      privateApp.get('/demo/history', async () =>
+        demoOutcomeSchema.parse(await demo.get()),
+      );
+      privateApp.post('/demo/prepare', async (request, reply) => {
+        if (!z.object({}).strict().safeParse(request.body).success)
+          return reply.code(400).send({ error: 'Invalid demo request' });
+        return demoOutcomeSchema.parse(await demo.prepare());
+      });
+    }
     privateApp.get(
       '/voice/stream',
       {
@@ -325,6 +350,7 @@ export function buildApp(logLevel = 'info', options: ApiOptions = {}) {
   });
   app.addHook('onClose', async () => {
     agent?.cancel();
+    await demo?.close();
     await store?.close();
   });
   return app;

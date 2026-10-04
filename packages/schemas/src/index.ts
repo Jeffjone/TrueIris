@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { demoStateSchema } from './demo';
 
 export const integrationStateSchema = z.enum([
   'not_implemented',
@@ -10,6 +11,10 @@ export const healthSchema = z
     service: z.literal('trueiris-api'),
     status: z.literal('ok'),
     timestamp: z.iso.datetime(),
+    demo: z
+      .object({ enabled: z.literal(true), state: demoStateSchema })
+      .strict()
+      .optional(),
     integrations: z
       .object({
         database: integrationStateSchema,
@@ -26,6 +31,7 @@ export const desktopStatusSchema = z
     version: z.string(),
     api: z.enum(['connected', 'unavailable']),
     demoMode: z.boolean(),
+    demo: healthSchema.shape.demo,
     integrations: healthSchema.shape.integrations.nullable(),
   })
   .strict();

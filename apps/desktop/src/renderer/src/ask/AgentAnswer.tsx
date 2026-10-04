@@ -16,6 +16,12 @@ export function AgentAnswer({
           : 'GEMINI · YOUR SAVED EVIDENCE'}{' '}
         · {result.data.query.source}
       </p>
+      {result.data.query.source === 'demo_seed' && (
+        <p className="muted">
+          This answer describes generated sample history, not your personal
+          past.
+        </p>
+      )}
       <h2>
         {result.state === 'partial'
           ? 'An incomplete picture.'

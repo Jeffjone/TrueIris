@@ -18,6 +18,7 @@ export default defineConfig({
       TRUEIRIS_VOICE_PROVIDER: 'elevenlabs',
       TRUEIRIS_REASONING_PROVIDER: 'gemini',
       DATABASE_URL: '',
+      TRUEIRIS_DEMO_MODE: 'false',
       TRUEIRIS_INGEST_TOKEN: '',
     },
   },

@@ -34,6 +34,10 @@ jobs:
         env:
           ELECTRON_DISABLE_SANDBOX: '1'
           DATABASE_URL: postgresql://postgres:trueiris-ci-only@127.0.0.1:5432/trueiris_test
+      - run: xvfb-run --auto-servernum pnpm test:demo
+        env:
+          ELECTRON_DISABLE_SANDBOX: '1'
+          DATABASE_URL: postgresql://postgres:trueiris-ci-only@127.0.0.1:5432/trueiris_test
       - run: xvfb-run --auto-servernum pnpm test:integration
         env:
           ELECTRON_DISABLE_SANDBOX: '1'

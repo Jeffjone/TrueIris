@@ -49,7 +49,9 @@ export function LiveView({
   context,
   activity,
   onActivity,
+  presentation = false,
 }: {
+  presentation?: boolean;
   sensor: SensorControls;
   context: ContextControls;
   activity: Activity;
@@ -253,8 +255,61 @@ export function LiveView({
           </p>
         </div>
       </section>
-      <ContextPanel context={context} />
-      <SensorPanel sensor={sensor} />
+      {presentation ? (
+        <section
+          className="settings-surface"
+          aria-label="Demo capture controls"
+        >
+          {snapshot.fallbackIssue && (
+            <p className="demo-fallback" role="status">
+              Presage is unavailable. Demo fallback is simulated; no camera is
+              in use.
+            </p>
+          )}
+          <button
+            className="sensor-button"
+            disabled={
+              !sensor.available ||
+              ['starting', 'stopping'].includes(snapshot.phase)
+            }
+            onClick={() =>
+              void (snapshot.phase === 'running'
+                ? sensor.stop()
+                : sensor.start('presage'))
+            }
+          >
+            {snapshot.phase === 'running'
+              ? 'Stop sensing'
+              : 'Start live signal'}
+          </button>
+          <button
+            className="sensor-button"
+            disabled={context.busy}
+            onClick={() =>
+              void context.action(
+                context.snapshot?.phase === 'running' ? 'stop' : 'start',
+              )
+            }
+          >
+            {context.snapshot?.phase === 'running'
+              ? 'Stop desktop context'
+              : 'Start desktop context'}
+          </button>
+          <p className="muted">
+            Starting a live signal enables your camera; Presage processes frames
+            on-device and uploads derived vitals. TrueIris stores no frames. If
+            Presage fails, demo mode switches to a clearly labeled simulated
+            stream. Desktop context is a separate opt-in and captures app
+            identity/idle state without window titles. Automatic saving remains
+            off until enabled in Diagnostics.
+          </p>
+        </section>
+      ) : (
+        <>
+          <ContextPanel context={context} />
+          <SensorPanel sensor={sensor} />
+        </>
+      )}
     </div>
   );
 }

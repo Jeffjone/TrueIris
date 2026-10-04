@@ -19,7 +19,7 @@ Complete one feature, validate, review the diff, update documentation, commit, p
 | P1       | Focus mode                          | Goal, timer, switches, baseline comparison, completion summary                                                                                            |
 | P1       | Event reconstruction (completed)    | Selected range → timestamped observations → grounded narrative                                                                                            |
 | P1       | Demo data (completed)               | Deterministic multi-day history marked `demo_seed`; targeted clear operation                                                                              |
-| P1       | Demo mode                           | Explicit fallback with correct provenance; real sensing preferred; repeatable questions and visible diagnostic health                                     |
+| P1       | Demo mode (completed)               | Explicit fallback with correct provenance; real sensing preferred; repeatable questions and visible diagnostic health                                     |
 | P1       | Vultr deployment                    | Docker runtime, TLS/auth, health/readiness, managed database, reproducible deployment instructions                                                        |
 | P2       | Experiments (completed)             | Conditions, minimum sessions, self-report; association vs insufficient evidence                                                                           |
 | P2       | Proactive insights                  | Personal evidence, conservative cadence, user control                                                                                                     |
@@ -87,3 +87,7 @@ Experiments persist immutable hypotheses, two conditions, measurement thresholds
 ## Feature 19 completed
 
 A deterministic seven-day/recent dataset stores observations, contexts, production epochs and a prepared experiment under a separate demo identity. Its source-scoped manifest links authored episode summaries and descriptive sample pattern cards to exact evidence. Refresh and clear are transactional; live/mock/foreign records are preserved. Unit/tool and isolated real Timescale checks cover the data lifecycle. Semantic embeddings remain deferred and the demo summary tool discloses keyword retrieval. See [demo data](DEMO_DATA.md).
+
+## Feature 20 completed
+
+Dedicated development/production launches prepare real Tiger-backed sample history under the demo identity and show a clean presentation, sample-day navigation, descriptive pattern cards, three grounded example questions and the prepared experiment. Presage remains live when available; only explicit demo sessions can fall back after failure, with teardown, new IDs and mock provenance. Named private capabilities and API mode checks protect owner scope. Unit/API/main, ordinary desktop, isolated Tiger-backed demo and explicit live Gemini sample-question checks cover the flow. See [demo mode](DEMO_MODE.md).

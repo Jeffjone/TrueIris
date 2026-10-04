@@ -29,7 +29,10 @@ const app = buildApp(env.LOG_LEVEL, {
     ? { store: new TigerStore(env.DATABASE_URL, env.DATABASE_CA_FILE) }
     : {}),
   ...(env.TRUEIRIS_INGEST_TOKEN ? { token: env.TRUEIRIS_INGEST_TOKEN } : {}),
-  userId: env.TRUEIRIS_USER_ID,
+  demoMode: env.TRUEIRIS_DEMO_MODE,
+  userId: env.TRUEIRIS_DEMO_MODE
+    ? env.TRUEIRIS_DEMO_USER_ID
+    : env.TRUEIRIS_USER_ID,
 });
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {

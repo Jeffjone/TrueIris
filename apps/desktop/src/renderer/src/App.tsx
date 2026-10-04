@@ -1,3 +1,11 @@
+import {
+  DemoBanner,
+  DemoDiagnostics,
+  DemoHome,
+  DemoPatterns,
+  useDemo,
+  type DemoControls,
+} from './demo';
 import { useEffect, useRef, useState } from 'react';
 import { useSensor, sensorLabel, type SensorControls } from './sensor';
 import { LiveView } from './live/LiveView';
@@ -93,7 +101,9 @@ function Settings({
   sensor,
   storage,
   context,
+  demo,
 }: {
+  demo: DemoControls;
   status: DesktopStatus | null;
   sensor: SensorControls;
   storage: StorageControls;
@@ -129,10 +139,13 @@ function Settings({
         <div className="settings-row">
           <span>Demo configuration</span>
           <span>
-            {status?.demoMode ? 'Requested · fallback not implemented' : 'Off'}
+            {status?.demoMode
+              ? 'On · Presage first; labeled mock after failure'
+              : 'Off'}
           </span>
         </div>
       </section>
+      {status?.demoMode && <DemoDiagnostics demo={demo} />}
       <StoragePanel storage={storage} />
       <section className="settings-surface">
         <h2>Connection status</h2>
@@ -174,6 +187,9 @@ function Settings({
 
 export function App() {
   const { status, checked } = useStatus();
+  const demoMode = status?.demoMode === true;
+  const demo = useDemo(demoMode);
+  const data = demo.result?.state === 'ready' ? demo.result.data : null;
   const sensor = useSensor();
   const context = useContext();
   const storage = useStorage();
@@ -195,7 +211,11 @@ export function App() {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <NavLink to="/live" className="brand" aria-label="TrueIris home">
+        <NavLink
+          to={demoMode ? '/demo' : '/live'}
+          className="brand"
+          aria-label="TrueIris home"
+        >
           <span className="brand-symbol" aria-hidden="true">
             ◉
           </span>{' '}
@@ -203,6 +223,7 @@ export function App() {
         </NavLink>
         <p className="brand-subtitle">A clearer view of you.</p>
         <nav aria-label="Main navigation">
+          {demoMode && <NavLink to="/demo">Presentation</NavLink>}
           {pages.map((page, index) => (
             <NavLink key={page} to={routeFor(page)}>
               <span className="nav-index" aria-hidden="true">
@@ -213,19 +234,33 @@ export function App() {
           ))}
         </nav>
         <div className="sidebar-footer">
-          <span
-            className={`status-dot ${status?.api === 'connected' ? 'connected' : ''}`}
-          />
-          <span role="status">
-            {!checked
-              ? 'Checking connection'
-              : status?.api === 'connected'
-                ? 'API connected'
-                : 'API unavailable'}
-          </span>
-          <div className="global-storage" data-testid="global-storage-status">
-            {storageLabel(storage.status)}
-          </div>
+          {!demoMode && (
+            <>
+              <span
+                className={`status-dot ${status?.api === 'connected' ? 'connected' : ''}`}
+              />
+              <span role="status">
+                {!checked
+                  ? 'Checking connection'
+                  : status?.api === 'connected'
+                    ? 'API connected'
+                    : 'API unavailable'}
+              </span>
+              <div
+                className="global-storage"
+                data-testid="global-storage-status"
+              >
+                {storageLabel(storage.status)}
+              </div>
+            </>
+          )}
+          {demoMode && (
+            <div className="global-storage" data-testid="global-storage-status">
+              {storage.status?.enabled
+                ? 'Saving current observations'
+                : 'Saving off'}
+            </div>
+          )}
           <div className="global-sensor global-context">
             <span data-testid="global-context-status">
               {contextLabel(context.snapshot)}
@@ -262,7 +297,18 @@ export function App() {
         </div>
       </aside>
       <main className="main-content">
+        {demoMode && <DemoBanner demo={demo} />}
         <Routes>
+          <Route
+            path="/demo"
+            element={
+              demoMode ? (
+                <DemoHome demo={demo} />
+              ) : (
+                <Navigate to="/live" replace />
+              )
+            }
+          />
           <Route
             path="/live"
             element={
@@ -273,6 +319,7 @@ export function App() {
                   </p>
                 )}
                 <LiveView
+                  presentation={demoMode}
                   sensor={sensor}
                   context={context}
                   activity={activity}
@@ -281,22 +328,48 @@ export function App() {
               </>
             }
           />
-          <Route path="/timeline" element={<TimelineView />} />
           <Route
-            path="/patterns"
+            path="/timeline"
             element={
-              <EmptyPage
-                title="Notice what repeats."
-                description="Personal patterns need enough history. Iris will show the evidence behind each observation."
+              <TimelineView
+                key={demoMode ? 'demo' : 'normal'}
+                demo={demoMode}
               />
             }
           />
-          <Route path="/ask-iris" element={<AskView />} />
-          <Route path="/experiments" element={<ExperimentsView />} />
+          <Route
+            path="/patterns"
+            element={
+              demoMode ? (
+                <DemoPatterns data={data} />
+              ) : (
+                <EmptyPage
+                  title="Notice what repeats."
+                  description="Personal patterns need enough history. Iris will show the evidence behind each observation."
+                />
+              )
+            }
+          />
+          <Route
+            path="/ask-iris"
+            element={
+              <AskView key={demoMode ? 'demo' : 'normal'} demo={demoMode} />
+            }
+          />
+          <Route
+            path="/experiments"
+            element={
+              <ExperimentsView
+                key={demoMode ? 'demo' : 'normal'}
+                demo={demoMode}
+              />
+            }
+          />
           <Route
             path="/settings"
             element={
               <Settings
+                demo={demo}
                 status={status}
                 sensor={sensor}
                 storage={storage}
@@ -304,7 +377,16 @@ export function App() {
               />
             }
           />
-          <Route path="*" element={<Navigate to="/live" replace />} />
+          <Route
+            path="*"
+            element={
+              checked ? (
+                <Navigate to={demoMode ? '/demo' : '/live'} replace />
+              ) : (
+                <p>Loading TrueIris…</p>
+              )
+            }
+          />
         </Routes>
         <footer className="content-footer">
           TRUEIRIS <span>Personal context intelligence</span>

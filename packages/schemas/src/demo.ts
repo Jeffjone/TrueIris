@@ -66,3 +66,26 @@ export const demoDatasetSchema = z
   });
 export type DemoDataset = z.infer<typeof demoDatasetSchema>;
 export type DemoEpisode = z.infer<typeof demoEpisodeSchema>;
+export const demoStateSchema = z.enum([
+  'preparing',
+  'ready',
+  'empty',
+  'unavailable',
+]);
+export const demoOutcomeSchema = z.discriminatedUnion('state', [
+  z.object({ state: z.literal('ready'), data: demoDatasetSchema }).strict(),
+  z
+    .object({
+      state: z.enum([
+        'preparing',
+        'empty',
+        'unavailable',
+        'not_configured',
+        'unauthorized',
+        'disabled',
+      ]),
+      data: z.null(),
+    })
+    .strict(),
+]);
+export type DemoOutcome = z.infer<typeof demoOutcomeSchema>;

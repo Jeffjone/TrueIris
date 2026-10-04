@@ -1,3 +1,4 @@
+import { privateFetch as fetch } from './transport';
 import {
   timelineQuerySchema,
   timelineDataSchema,

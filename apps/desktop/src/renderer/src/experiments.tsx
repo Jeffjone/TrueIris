@@ -164,7 +164,7 @@ function SessionForm({
     </form>
   );
 }
-export function ExperimentsView() {
+export function ExperimentsView({ demo = false }: { demo?: boolean }) {
   const [snapshot, setSnapshot] = useState<ExperimentSnapshot | null>(null),
     [busy, setBusy] = useState(true),
     [notice, setNotice] = useState('');
@@ -179,9 +179,11 @@ export function ExperimentsView() {
     [first, setFirst] = useState('Music'),
     [second, setSecond] = useState('No Music'),
     [minimum, setMinimum] = useState(7),
-    [source, setSource] = useState<ExperimentDefinition['source']>('live'),
-    [timezone, setTimezone] = useState(
-      () => Intl.DateTimeFormat().resolvedOptions().timeZone,
+    [source, setSource] = useState<ExperimentDefinition['source']>(
+      demo ? 'demo_seed' : 'live',
+    ),
+    [timezone, setTimezone] = useState(() =>
+      demo ? 'UTC' : Intl.DateTimeFormat().resolvedOptions().timeZone,
     ),
     [activity, setActivity] =
       useState<ExperimentDefinition['activity']>('Coding');
@@ -189,6 +191,7 @@ export function ExperimentsView() {
     { metric: 'session_duration', meaningfulDifference: 5 },
     { metric: 'focus_rating', meaningfulDifference: 1 },
   ]);
+  const DefinitionContainer = demo ? 'details' : 'div';
   const errors = {
     not_configured: 'Connect saved history in Settings to save experiments.',
     unauthorized: 'Experiment access needs attention in Settings.',
@@ -252,6 +255,13 @@ export function ExperimentsView() {
           </p>
         </div>
       </div>
+      {demo && (
+        <p className="muted">
+          Demo experiment ratings and condition assignments are fictional.
+          Designed differences illustrate the comparison rules; they are not
+          personal findings.
+        </p>
+      )}
       <p role="status">
         {busy ? 'Loading or saving experiment evidence…' : notice}
       </p>
@@ -285,210 +295,217 @@ export function ExperimentsView() {
           <p>No saved experiments yet.</p>
         )}
       </section>
-      <section className="timeline-details" aria-label="Define an experiment">
-        <h2>Define an experiment</h2>
-        <p className="muted">
-          Set two conditions and practical difference thresholds before
-          recording sessions. Definitions stay fixed; create a new experiment to
-          change them. Music, time of day, walks or breaks can be compared.
-          Conditions are selected by you.
-        </p>
-        <form
-          className="experiment-form"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const parsed = experimentDefinitionSchema.safeParse({
-              title,
-              hypothesis,
-              conditions: [first, second],
-              minimumSessions: minimum,
-              criteria,
-              source,
-              timezone,
-              activity,
-            });
-            if (!parsed.success) {
-              setNotice(
-                'Use distinct conditions, at least one measure, positive thresholds and a target of 6–200 sessions. Rating thresholds are at most four points.',
-              );
-              return;
-            }
-            void run({ type: 'create', definition: parsed.data });
-          }}
-        >
-          <label>
-            Title
-            <input
-              aria-label="Experiment title"
-              required
-              maxLength={120}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </label>
-          <label>
-            Hypothesis
-            <textarea
-              aria-label="Experiment hypothesis"
-              required
-              maxLength={500}
-              value={hypothesis}
-              onChange={(e) => setHypothesis(e.target.value)}
-            />
-          </label>
-          <div className="experiment-grid">
+      <DefinitionContainer>
+        {demo && (
+          <summary className="text-link">Create another comparison</summary>
+        )}
+        <section className="timeline-details" aria-label="Define an experiment">
+          <h2>Define an experiment</h2>
+          <p className="muted">
+            Set two conditions and practical difference thresholds before
+            recording sessions. Definitions stay fixed; create a new experiment
+            to change them. Music, time of day, walks or breaks can be compared.
+            Conditions are selected by you.
+          </p>
+          <form
+            className="experiment-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const parsed = experimentDefinitionSchema.safeParse({
+                title,
+                hypothesis,
+                conditions: [first, second],
+                minimumSessions: minimum,
+                criteria,
+                source,
+                timezone,
+                activity,
+              });
+              if (!parsed.success) {
+                setNotice(
+                  'Use distinct conditions, at least one measure, positive thresholds and a target of 6–200 sessions. Rating thresholds are at most four points.',
+                );
+                return;
+              }
+              void run({ type: 'create', definition: parsed.data });
+            }}
+          >
             <label>
-              First condition
+              Title
               <input
-                aria-label="First condition"
+                aria-label="Experiment title"
                 required
-                maxLength={60}
-                value={first}
-                onChange={(e) => setFirst(e.target.value)}
+                maxLength={120}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
               />
             </label>
             <label>
-              Second condition
-              <input
-                aria-label="Second condition"
+              Hypothesis
+              <textarea
+                aria-label="Experiment hypothesis"
                 required
-                maxLength={60}
-                value={second}
-                onChange={(e) => setSecond(e.target.value)}
+                maxLength={500}
+                value={hypothesis}
+                onChange={(e) => setHypothesis(e.target.value)}
               />
             </label>
-            <label>
-              Minimum sessions
-              <input
-                aria-label="Minimum sessions"
-                required
-                type="number"
-                min="6"
-                max="200"
-                value={minimum}
-                onChange={(e) => setMinimum(Number(e.target.value))}
-              />
-            </label>
-          </div>
-          <div className="experiment-grid">
-            <label>
-              History source
-              <select
-                aria-label="Experiment history source"
-                value={source}
-                onChange={(e) => setSource(e.target.value as typeof source)}
-              >
-                <option value="live">Live recordings</option>
-                <option value="mock">Mock · simulated</option>
-                <option value="demo_seed">Demo seed</option>
-              </select>
-            </label>
-            <label>
-              Comparison timezone
-              <select
-                aria-label="Experiment timezone"
-                value={timezone}
-                onChange={(e) => setTimezone(e.target.value)}
-              >
-                {[
-                  ...new Set([
-                    timezone,
-                    'UTC',
-                    ...Intl.supportedValuesOf('timeZone'),
-                  ]),
-                ].map((z) => (
-                  <option key={z}>{z}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Baseline activity
-              <select
-                aria-label="Experiment activity"
-                value={activity}
-                onChange={(e) => setActivity(e.target.value as typeof activity)}
-              >
-                {[
-                  'Coding',
-                  'Studying',
-                  'Reading',
-                  'Meeting',
-                  'Break',
-                  'Other',
-                ].map((a) => (
-                  <option key={a}>{a}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <fieldset>
-            <legend>Measurement criteria and practical thresholds</legend>
-            {(Object.keys(metricInfo) as ExperimentMetric[]).map((metric) => {
-              const selected = criteria.find((c) => c.metric === metric),
-                info = metricInfo[metric];
-              return (
-                <div className="experiment-criterion" key={metric}>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={!!selected}
-                      onChange={(e) =>
-                        setCriteria(
-                          e.target.checked
-                            ? [
-                                ...criteria,
-                                {
-                                  metric,
-                                  meaningfulDifference: info.threshold,
-                                },
-                              ]
-                            : criteria.filter((c) => c.metric !== metric),
-                        )
-                      }
-                    />
-                    {info.label}
-                  </label>
-                  {selected && (
+            <div className="experiment-grid">
+              <label>
+                First condition
+                <input
+                  aria-label="First condition"
+                  required
+                  maxLength={60}
+                  value={first}
+                  onChange={(e) => setFirst(e.target.value)}
+                />
+              </label>
+              <label>
+                Second condition
+                <input
+                  aria-label="Second condition"
+                  required
+                  maxLength={60}
+                  value={second}
+                  onChange={(e) => setSecond(e.target.value)}
+                />
+              </label>
+              <label>
+                Minimum sessions
+                <input
+                  aria-label="Minimum sessions"
+                  required
+                  type="number"
+                  min="6"
+                  max="200"
+                  value={minimum}
+                  onChange={(e) => setMinimum(Number(e.target.value))}
+                />
+              </label>
+            </div>
+            <div className="experiment-grid">
+              <label>
+                History source
+                <select
+                  aria-label="Experiment history source"
+                  value={source}
+                  onChange={(e) => setSource(e.target.value as typeof source)}
+                >
+                  <option value="live">Live recordings</option>
+                  <option value="mock">Mock · simulated</option>
+                  <option value="demo_seed">Demo seed</option>
+                </select>
+              </label>
+              <label>
+                Comparison timezone
+                <select
+                  aria-label="Experiment timezone"
+                  value={timezone}
+                  onChange={(e) => setTimezone(e.target.value)}
+                >
+                  {[
+                    ...new Set([
+                      timezone,
+                      'UTC',
+                      ...Intl.supportedValuesOf('timeZone'),
+                    ]),
+                  ].map((z) => (
+                    <option key={z}>{z}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Baseline activity
+                <select
+                  aria-label="Experiment activity"
+                  value={activity}
+                  onChange={(e) =>
+                    setActivity(e.target.value as typeof activity)
+                  }
+                >
+                  {[
+                    'Coding',
+                    'Studying',
+                    'Reading',
+                    'Meeting',
+                    'Break',
+                    'Other',
+                  ].map((a) => (
+                    <option key={a}>{a}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <fieldset>
+              <legend>Measurement criteria and practical thresholds</legend>
+              {(Object.keys(metricInfo) as ExperimentMetric[]).map((metric) => {
+                const selected = criteria.find((c) => c.metric === metric),
+                  info = metricInfo[metric];
+                return (
+                  <div className="experiment-criterion" key={metric}>
                     <label>
-                      Meaningful difference ({info.unit})
                       <input
-                        aria-label={`${info.label} threshold`}
-                        required
-                        type="number"
-                        min="0.01"
-                        max={metric === 'focus_rating' ? 4 : 2000}
-                        step="0.01"
-                        value={selected.meaningfulDifference}
+                        type="checkbox"
+                        checked={!!selected}
                         onChange={(e) =>
                           setCriteria(
-                            criteria.map((c) =>
-                              c.metric === metric
-                                ? {
-                                    ...c,
-                                    meaningfulDifference: Number(
-                                      e.target.value,
-                                    ),
-                                  }
-                                : c,
-                            ),
+                            e.target.checked
+                              ? [
+                                  ...criteria,
+                                  {
+                                    metric,
+                                    meaningfulDifference: info.threshold,
+                                  },
+                                ]
+                              : criteria.filter((c) => c.metric !== metric),
                           )
                         }
                       />
+                      {info.label}
                     </label>
-                  )}
-                </div>
-              );
-            })}
-          </fieldset>
-          <p className="muted">
-            Creating this definition saves it to your configured database. Raw
-            media is not saved and experiments do not send data to Gemini.
-          </p>
-          <button className="sensor-button" disabled={busy}>
-            Create experiment
-          </button>
-        </form>
-      </section>
+                    {selected && (
+                      <label>
+                        Meaningful difference ({info.unit})
+                        <input
+                          aria-label={`${info.label} threshold`}
+                          required
+                          type="number"
+                          min="0.01"
+                          max={metric === 'focus_rating' ? 4 : 2000}
+                          step="0.01"
+                          value={selected.meaningfulDifference}
+                          onChange={(e) =>
+                            setCriteria(
+                              criteria.map((c) =>
+                                c.metric === metric
+                                  ? {
+                                      ...c,
+                                      meaningfulDifference: Number(
+                                        e.target.value,
+                                      ),
+                                    }
+                                  : c,
+                              ),
+                            )
+                          }
+                        />
+                      </label>
+                    )}
+                  </div>
+                );
+              })}
+            </fieldset>
+            <p className="muted">
+              Creating this definition saves it to your configured database. Raw
+              media is not saved and experiments do not send data to Gemini.
+            </p>
+            <button className="sensor-button" disabled={busy}>
+              Create experiment
+            </button>
+          </form>
+        </section>
+      </DefinitionContainer>
       {detail && definition && (
         <section className="timeline-details" aria-label="Experiment detail">
           <p className="eyebrow">

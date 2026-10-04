@@ -181,3 +181,7 @@ Migration 4 adds owner/source-scoped experiment definitions and labeled sessions
 ## Feature 19 demo data
 
 Migration 5 stores a `demo_seed` manifest under the dedicated demo identity. A deterministic generator validates measurements/context and uses production epoch analytics. Parameterized bulk insertion and existing baseline queries run in one owner-locked transaction. Source/owner-bound refresh/clear protect real captures and unrelated records. The manifest contains evidence-linked illustrative patterns, authored episode summaries and prepared experiment IDs. Demo-only keyword summary retrieval is distinct from deferred semantic embeddings. See [demo data](DEMO_DATA.md).
+
+## Feature 20 dedicated presentation
+
+The explicit demo launcher sets the mode for API and desktop. API token scope switches to the separate demo owner and a single-flight preparation service seeds once on startup; named bounded capabilities fetch/prepare its manifest. Private HTTP/WebSocket mode assertions reject mixed deployments. Presentation routes default to generated history/UTC and use evidence-linked sample artifacts; detailed health/provider controls live in Settings. Sensor lifecycle guards tear down failed real streams before any demo-only mock replacement and preserve source/session identity. No provider/database fallback is added outside the explicit mode. See [demo mode](DEMO_MODE.md).

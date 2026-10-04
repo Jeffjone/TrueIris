@@ -26,11 +26,13 @@ export class SensorController {
       kind: SensorProviderKind,
     ) => Promise<SensorProvider>,
     private readonly publish: (snapshot: SensorSnapshot) => void,
+    private readonly demoFallback = false,
   ) {
     this.snapshot = {
       provider: initialProvider,
       phase: 'off',
       issue: 'none',
+      fallbackIssue: null,
       sessionId: null,
       startedAt: null,
       reading: null,
@@ -41,7 +43,9 @@ export class SensorController {
         this.snapshot.reading &&
         Date.now() - Date.parse(this.snapshot.reading.timestamp) > 5000
       ) {
-        this.update({ reading: null, issue: 'stale' });
+        if (this.demoFallback && this.snapshot.provider === 'presage')
+          void this.fail('stale');
+        else this.update({ reading: null, issue: 'stale' });
       }
     }, 1000);
     this.heartbeat.unref();
@@ -71,7 +75,10 @@ export class SensorController {
       });
     return this.cleanup;
   }
-  async start(kind: SensorProviderKind): Promise<SensorSnapshot> {
+  async start(
+    kind: SensorProviderKind,
+    fallbackIssue: SensorIssue | null = null,
+  ): Promise<SensorSnapshot> {
     if (['starting', 'running', 'stopping'].includes(this.snapshot.phase))
       return this.get();
     await this.cleanup;
@@ -85,6 +92,7 @@ export class SensorController {
       provider: kind,
       phase: 'starting',
       issue: 'calibrating',
+      fallbackIssue,
       sessionId,
       startedAt: null,
       reading: null,
@@ -101,21 +109,24 @@ export class SensorController {
       );
     } catch (error) {
       if (generation === this.generation)
-        this.fail(
+        await this.fail(
           error instanceof SensorStartError ? error.issue : 'processing',
         );
     }
     return this.get();
   }
-  private fail(issue: SensorIssue) {
-    ++this.generation;
+  private async fail(issue: SensorIssue) {
+    const fallback = this.demoFallback && this.snapshot.provider === 'presage';
+    const generation = ++this.generation;
     this.update({ phase: 'error', issue, reading: null, startedAt: null });
-    void this.release();
+    await this.release();
+    if (fallback && !this.cleanupFailed && generation === this.generation)
+      await this.start('mock', issue);
   }
   private receive(generation: number, event: SensorEvent) {
     if (generation !== this.generation) return;
     if (event.kind === 'error') {
-      this.fail(event.issue);
+      void this.fail(event.issue);
       return;
     }
     if (event.kind === 'ready') {
@@ -135,7 +146,7 @@ export class SensorController {
       event.reading.source !==
         (this.snapshot.provider === 'presage' ? 'live' : 'mock')
     ) {
-      this.fail('processing');
+      void this.fail('processing');
       return;
     }
     const reading = event.reading;
@@ -157,6 +168,7 @@ export class SensorController {
       this.update({
         phase: 'off',
         issue: 'none',
+        fallbackIssue: null,
         sessionId: null,
         startedAt: null,
         reading: null,

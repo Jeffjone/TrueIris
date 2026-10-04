@@ -1134,3 +1134,62 @@ h2 {
   min-width: 0;
   border: 1px solid var(--border);
 }
+.demo-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  padding: 14px 0;
+  margin-bottom: 28px;
+  font-size: 14px;
+  color: var(--muted);
+}
+.demo-banner strong {
+  color: var(--accent);
+  white-space: nowrap;
+}
+.demo-banner p {
+  flex-basis: 100%;
+  margin: 0;
+}
+.demo-banner a {
+  margin-left: auto;
+}
+.demo-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+  gap: 24px;
+}
+.demo-card {
+  display: block;
+  background: #fafbf7;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 28px;
+  color: inherit;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.demo-card p {
+  line-height: 1.65;
+}
+.demo-card li {
+  margin: 20px 0;
+}
+.demo-days,
+.demo-questions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 20px 0;
+}
+.demo-days a {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--accent);
+}
+.demo-fallback {
+  color: var(--accent);
+}

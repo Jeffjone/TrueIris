@@ -20,6 +20,7 @@ export async function getDesktopStatus(
       version,
       demoMode,
       api: 'connected',
+      ...(health.demo ? { demo: health.demo } : {}),
       integrations: health.integrations,
     });
   } catch {

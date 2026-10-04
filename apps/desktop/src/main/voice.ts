@@ -1,3 +1,4 @@
+import { transportMode } from './transport';
 import { randomUUID } from 'node:crypto';
 import WebSocket from 'ws';
 import {
@@ -113,6 +114,7 @@ export class VoiceClient {
     try {
       ws = this.connect(url.toString(), {
         authorization: `Bearer ${this.token!}`,
+        'x-trueiris-mode': transportMode(),
       });
     } catch {
       this.stop('unavailable');

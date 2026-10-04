@@ -146,7 +146,10 @@ export async function executeTool(
   ) =>
     result.facts.push({
       id: `${id}.f${result.facts.length + 1}`,
-      text,
+      text:
+        range?.source === 'demo_seed'
+          ? `In generated sample history, ${text.charAt(0).toLowerCase()}${text.slice(1)}`
+          : text,
       value,
       range,
     });

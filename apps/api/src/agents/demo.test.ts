@@ -31,7 +31,9 @@ it('retrieves only scoped, explicitly authored demo summaries and keeps real sem
   expect(episodes).toHaveLength(3);
   expect(
     episodes.every(
-      (f) => f.range?.source === 'demo_seed' && f.text.includes('Generated'),
+      (f) =>
+        f.range?.source === 'demo_seed' &&
+        f.text.toLowerCase().includes('generated'),
     ),
   ).toBe(true);
   expect(

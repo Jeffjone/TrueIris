@@ -53,12 +53,14 @@ test('missing credentials do not open a camera or expose secrets', async () => {
     expect(state).toMatchObject({
       phase: 'error',
       issue: 'missing_key',
+      fallbackIssue: null,
       reading: null,
     });
     expect(Object.keys(state ?? {})).toEqual([
       'provider',
       'phase',
       'issue',
+      'fallbackIssue',
       'reading',
       'sessionId',
       'startedAt',

@@ -3,11 +3,13 @@ import type { AgentResult, AskQuery } from '@trueiris/schemas';
 import { VoiceControls } from '../voice/VoiceControls';
 import { AgentAnswer } from './AgentAnswer';
 
-export function AskView() {
+export function AskView({ demo = false }: { demo?: boolean }) {
   const [question, setQuestion] = useState(''),
-    [source, setSource] = useState<AskQuery['source']>('live');
+    [source, setSource] = useState<AskQuery['source']>(
+      demo ? 'demo_seed' : 'live',
+    );
   const [timezone, setTimezone] = useState(
-    Intl.DateTimeFormat().resolvedOptions().timeZone,
+    demo ? 'UTC' : Intl.DateTimeFormat().resolvedOptions().timeZone,
   );
   const [result, setResult] = useState<AgentResult | null>(null),
     [busy, setBusy] = useState(false);
@@ -77,38 +79,63 @@ export function AskView() {
           excluded. Questions and answers are kept in this view only. Voice can
           be started separately below.
         </p>
-        <div className="timeline-toolbar">
-          <label>
-            History source
-            <select
-              aria-label="Iris history source"
-              value={source}
-              onChange={(e) => {
-                clear();
-                setSource(e.target.value as AskQuery['source']);
-              }}
-            >
-              <option value="live">Live · Presage</option>
-              <option value="mock">Mock · simulated</option>
-              <option value="demo_seed">Demo seed · sample data</option>
-            </select>
-          </label>
-          <label>
-            History timezone
-            <select
-              aria-label="Iris timezone"
-              value={timezone}
-              onChange={(e) => {
-                clear();
-                setTimezone(e.target.value);
-              }}
-            >
-              {zones.map((z) => (
-                <option key={z}>{z}</option>
+        {demo && (
+          <>
+            <p className="pill">
+              demo_seed · generated historical evidence · UTC
+            </p>
+            <div className="demo-questions" aria-label="Demo example questions">
+              {[
+                'Iris, explain the last 30 minutes.',
+                'Summarize today’s sample history and compare its coding pulse with the earlier coding baseline.',
+                'Find sample coding episode summaries from history.',
+              ].map((q) => (
+                <button
+                  className="sensor-button"
+                  key={q}
+                  disabled={busy || voiceActive}
+                  onClick={() => void ask(q)}
+                >
+                  {q}
+                </button>
               ))}
-            </select>
-          </label>
-        </div>
+            </div>
+          </>
+        )}
+        {!demo && (
+          <div className="timeline-toolbar">
+            <label>
+              History source
+              <select
+                aria-label="Iris history source"
+                value={source}
+                onChange={(e) => {
+                  clear();
+                  setSource(e.target.value as AskQuery['source']);
+                }}
+              >
+                <option value="live">Live · Presage</option>
+                <option value="mock">Mock · simulated</option>
+                <option value="demo_seed">Demo seed · sample data</option>
+              </select>
+            </label>
+            <label>
+              History timezone
+              <select
+                aria-label="Iris timezone"
+                value={timezone}
+                onChange={(e) => {
+                  clear();
+                  setTimezone(e.target.value);
+                }}
+              >
+                {zones.map((z) => (
+                  <option key={z}>{z}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
         <VoiceControls
           key={`${source}:${timezone}:${voiceRevision}`}
           options={{ source, timezone }}

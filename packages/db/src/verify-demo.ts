@@ -88,7 +88,35 @@ export async function verifyDemo(store: TigerStore, owners: string[]) {
     (await store.exportPage(other)).measurements[0]?.source,
     'demo_seed',
   );
+  // A queued seed accepted before deletion must not restore historical data.
+  const lock = await store.pool.connect();
+  let rejected: Promise<void>;
+  try {
+    await lock.query('BEGIN');
+    await lock.query('SELECT id FROM users WHERE id=$1 FOR UPDATE', [owner]);
+    rejected = assert.rejects(
+      store.demo.seed(owner, now),
+      /Demo preparation predates deletion/,
+    );
+    await lock.query('UPDATE users SET deleted_before=$2 WHERE id=$1', [
+      owner,
+      new Date(),
+    ]);
+    await lock.query('COMMIT');
+  } finally {
+    await lock.query('ROLLBACK');
+    lock.release();
+  }
+  await rejected;
+  assert.equal(await store.demo.get(owner), null);
+  assert.equal((await store.timeline(owner, coding.range)).summary.count, 0);
+  // A later explicit request can prepare fresh, clearly generated history.
+  assert.equal(
+    (await store.demo.seed(owner)).measurementCount,
+    seeded.measurementCount,
+  );
+  await store.demo.clear(owner);
   console.log(
-    'Demo SQL checks passed: deterministic seed, exact summaries, supported baselines, experiment comparisons, isolated refresh and source-only clearing; live and foreign records preserved.',
+    'Demo SQL checks passed: deterministic seed, exact summaries, supported baselines, experiment comparisons, isolated refresh, deletion replay barrier and source-only clearing; live and foreign records preserved.',
   );
 }

@@ -29,6 +29,8 @@ export const sensorSnapshotSchema = z
     provider: sensorProviderSchema,
     phase: z.enum(['off', 'starting', 'running', 'stopping', 'error']),
     issue: sensorIssueSchema,
+    // Only demo-mode automatic replacement; readings retain actual live/mock source.
+    fallbackIssue: sensorIssueSchema.nullable().optional(),
     reading: sensorReadingSchema.nullable(),
     sessionId: z.uuid().nullable(),
     // Main-owned UTC start assigned on provider readiness; null outside a session.

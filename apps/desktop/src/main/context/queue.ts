@@ -1,3 +1,4 @@
+import { privateFetch as fetch } from '../transport';
 import { contextBatchSchema, type ContextInterval } from '@trueiris/schemas';
 import { RecordQueue } from '../storage/queue';
 export function createContextQueue(

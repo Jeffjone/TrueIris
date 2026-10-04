@@ -1,5 +1,5 @@
 import type { SensorProviderKind } from '@trueiris/schemas';
-import type { SensorControls } from '../sensor';
+import { sensorMessages, type SensorControls } from '../sensor';
 
 export function SensorPanel({ sensor }: { sensor: SensorControls }) {
   const { snapshot, available, provider, selectProvider } = sensor;
@@ -43,6 +43,12 @@ export function SensorPanel({ sensor }: { sensor: SensorControls }) {
           </button>
         )}
       </div>
+      {snapshot.fallbackIssue && (
+        <p className="muted" role="status">
+          Demo fallback: {sensorMessages[snapshot.fallbackIssue].title} Current
+          mock readings are simulated.
+        </p>
+      )}
       <p className="muted sensor-privacy">
         {provider === 'mock'
           ? 'Simulated readings for development. No camera or Presage connection is used.'
