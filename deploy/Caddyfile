@@ -1,0 +1,3 @@
+{$TRUEIRIS_DOMAIN} {
+    reverse_proxy api:3001
+}

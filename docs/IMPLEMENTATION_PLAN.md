@@ -20,7 +20,7 @@ Complete one feature, validate, review the diff, update documentation, commit, p
 | P1       | Event reconstruction (completed)    | Selected range → timestamped observations → grounded narrative                                                                                            |
 | P1       | Demo data (completed)               | Deterministic multi-day history marked `demo_seed`; targeted clear operation                                                                              |
 | P1       | Demo mode (completed)               | Explicit fallback with correct provenance; real sensing preferred; repeatable questions and visible diagnostic health                                     |
-| P1       | Vultr deployment                    | Docker runtime, TLS/auth, health/readiness, managed database, reproducible deployment instructions                                                        |
+| P1       | Vultr deployment (packaged)         | Docker runtime, TLS/auth, health/readiness, managed database, reproducible deployment instructions; live rollout needs VM access                          |
 | P2       | Experiments (completed)             | Conditions, minimum sessions, self-report; association vs insufficient evidence                                                                           |
 | P2       | Proactive insights                  | Personal evidence, conservative cadence, user control                                                                                                     |
 | P2       | Optional screen context             | Explicit opt-in, visible activation, temporary downscaled image, classification only, discard pixels                                                      |
@@ -91,3 +91,7 @@ A deterministic seven-day/recent dataset stores observations, contexts, producti
 ## Feature 20 completed
 
 Dedicated development/production launches prepare real Tiger-backed sample history under the demo identity and show a clean presentation, sample-day navigation, descriptive pattern cards, three grounded example questions and the prepared experiment. Presage remains live when available; only explicit demo sessions can fall back after failure, with teardown, new IDs and mock provenance. Named private capabilities and API mode checks protect owner scope. Unit/API/main, ordinary desktop, isolated Tiger-backed demo and explicit live Gemini sample-question checks cover the flow. See [demo mode](DEMO_MODE.md).
+
+## Feature 21 packaged
+
+The backend and explicit migration command have production container packaging, an HTTPS/WSS proxy, private runtime configuration, health checks and a Vultr runbook including an SSH-tunnel option. Source quality/build checks and the portable production runtime are validated locally; Docker image/Compose/proxy validation is included in CI. Live Vultr deployment requires the target VM's SSH access and, for public HTTPS, its domain. See [Vultr deployment](VULTR_DEPLOYMENT.md).

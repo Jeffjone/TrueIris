@@ -16,3 +16,6 @@ data/
 captures/
 recordings/
 screenshots/
+deploy/api.env
+deploy/certs/*
+!deploy/certs/.gitkeep

@@ -6,6 +6,8 @@ The master instructions live in [TRUEIRIS_SPEC.md](TRUEIRIS_SPEC.md). The founda
 
 ## Architecture
 
+For the Vultr backend container and HTTPS desktop connection, see [Vultr deployment](docs/VULTR_DEPLOYMENT.md).
+
 ```mermaid
 flowchart LR
   UI[Electron / React] --> PRELOAD[Secure preload]
