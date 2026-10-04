@@ -1,4 +1,4 @@
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { compareAgainstBaseline } from '@trueiris/analytics';
 import {
   baselineQuerySchema,
@@ -8,7 +8,7 @@ import {
 
 /** Bounded, owner/source scoped query. No chart caps or rounded chart statistics. */
 export async function queryBaselines(
-  pool: Pool,
+  pool: Pool | PoolClient,
   userId: string,
   input: BaselineQuery,
 ) {

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSensor, sensorLabel, type SensorControls } from './sensor';
 import { LiveView } from './live/LiveView';
+import { ExperimentsView } from './experiments';
 import { AskView } from './ask/AskView';
 import { TimelineView } from './timeline/TimelineView';
 import type { Activity } from './live/presentation';
@@ -291,15 +292,7 @@ export function App() {
             }
           />
           <Route path="/ask-iris" element={<AskView />} />
-          <Route
-            path="/experiments"
-            element={
-              <EmptyPage
-                title="Learn what works for you."
-                description="Personal experiments will help you compare sessions and explore your own patterns."
-              />
-            }
-          />
+          <Route path="/experiments" element={<ExperimentsView />} />
           <Route
             path="/settings"
             element={

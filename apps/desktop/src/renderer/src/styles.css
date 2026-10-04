@@ -1083,3 +1083,54 @@ h2 {
   color: var(--muted);
   font-size: 13px;
 }
+
+.experiment-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 14px 0;
+}
+.experiment-form input:not([type='checkbox']),
+.experiment-form select,
+.experiment-form textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fbfcf8;
+  color: inherit;
+  font: inherit;
+}
+.experiment-form textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+.experiment-grid,
+.experiment-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: 16px;
+}
+.experiment-criterion {
+  border-bottom: 1px solid var(--border);
+}
+.experiment-criterion > label:first-child {
+  flex-direction: row;
+}
+.experiment-list li {
+  display: flex;
+  gap: 16px;
+  margin: 16px 0;
+  flex-wrap: wrap;
+}
+.experiment-sessions li {
+  border-bottom: 1px solid var(--border);
+  margin: 20px 0;
+  padding-bottom: 20px;
+  overflow-wrap: anywhere;
+}
+.experiments-view fieldset {
+  min-width: 0;
+  border: 1px solid var(--border);
+}

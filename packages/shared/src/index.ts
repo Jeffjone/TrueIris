@@ -3,6 +3,8 @@ import type {
   VoiceAudio,
   VoiceEvent,
   VoiceSnapshot,
+  ExperimentAction,
+  ExperimentOutcome,
   ReconstructionQuery,
   AskQuery,
   AgentResult,
@@ -20,6 +22,10 @@ import type {
   RecordedActivity,
 } from '@trueiris/schemas';
 
+export const EXPERIMENT_CHANNELS = {
+  action: 'trueiris:experiments:action',
+  export: 'trueiris:experiments:export',
+} as const;
 export const STATUS_CHANNEL = 'trueiris:get-status';
 export const SENSOR_CHANNELS = {
   get: 'trueiris:sensor:get',
@@ -64,6 +70,8 @@ export const ACTIVITY_CHANNEL = 'trueiris:activity:set';
 
 /** Named, validated capabilities only; never expose generic IPC or credentials. */
 export interface DesktopBridge {
+  experimentAction(action: ExperimentAction): Promise<ExperimentOutcome>;
+  exportExperiment(id: string): Promise<'saved' | 'cancelled' | 'failed'>;
   getVoice(): Promise<VoiceSnapshot>;
   startVoice(options: VoiceOptions): Promise<VoiceSnapshot>;
   stopVoice(): Promise<void>;

@@ -7,6 +7,8 @@ import Fastify, { LogController } from 'fastify';
 import { timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import {
+  experimentActionSchema,
+  experimentOutcomeSchema,
   askRequestSchema,
   agentResultSchema,
   baselineQuerySchema,
@@ -23,9 +25,16 @@ import {
   contextExportPageSchema,
 } from '@trueiris/schemas';
 import { loggerOptions } from '@trueiris/shared/logging';
-import { SessionConflict, type MeasurementStore } from '@trueiris/db';
+import {
+  ExperimentConflict,
+  ExperimentNotFound,
+  type ExperimentStore,
+  SessionConflict,
+  type MeasurementStore,
+} from '@trueiris/db';
 
 interface ApiOptions {
+  experiments?: ExperimentStore;
   voice?: VoiceProvider;
   reasoning?: ReasoningProvider;
   store?: MeasurementStore;
@@ -178,6 +187,68 @@ export function buildApp(logLevel = 'info', options: ApiOptions = {}) {
         );
       } catch {
         return reply.code(503).send({ error: 'Context export is unavailable' });
+      }
+    });
+    privateApp.post('/experiments/action', async (request, reply) => {
+      const parsed = experimentActionSchema.safeParse(request.body);
+      if (!parsed.success)
+        return reply.code(400).send({ error: 'Invalid experiment action' });
+      const experiments = options.experiments ?? store?.experiments;
+      if (!experiments)
+        return experimentOutcomeSchema.parse({
+          state: 'not_configured',
+          data: null,
+        });
+      const action = parsed.data;
+      try {
+        let selected = null;
+        switch (action.type) {
+          case 'list':
+            break;
+          case 'get':
+            selected = await experiments.get(userId!, action.id);
+            break;
+          case 'create': {
+            const e = await experiments.create(userId!, action.definition);
+            selected = await experiments.get(userId!, e.id);
+            break;
+          }
+          case 'status':
+            await experiments.status(userId!, action.id, action.status);
+            selected = await experiments.get(userId!, action.id);
+            break;
+          case 'record':
+            selected = await experiments.record(
+              userId!,
+              action.id,
+              action.input,
+            );
+            break;
+          case 'remove':
+            await experiments.remove(userId!, action.id);
+            break;
+          case 'remove_session':
+            selected = await experiments.removeSession(
+              userId!,
+              action.id,
+              action.sessionId,
+            );
+            break;
+        }
+        return experimentOutcomeSchema.parse({
+          state: 'ready',
+          data: { experiments: await experiments.list(userId!), selected },
+        });
+      } catch (error) {
+        return experimentOutcomeSchema.parse({
+          state:
+            error instanceof ExperimentConflict
+              ? 'conflict'
+              : error instanceof ExperimentNotFound
+                ? 'not_found'
+                : 'unavailable',
+          data: null,
+        });
       }
     });
     privateApp.post('/agent/ask', async (request, reply) => {

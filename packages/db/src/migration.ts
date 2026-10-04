@@ -97,6 +97,30 @@ export async function migrate(pool: Pool) {
         INSERT INTO trueiris_migrations(version) VALUES(3);
       `);
     }
+    const experiments = await client.query(
+      'SELECT version FROM trueiris_migrations WHERE version=4',
+    );
+    if (!experiments.rowCount) {
+      await client.query(`
+      CREATE TABLE experiments (
+        id uuid PRIMARY KEY,user_id uuid NOT NULL REFERENCES users(id),source text NOT NULL CHECK(source IN ('live','mock','demo_seed')),
+        title text NOT NULL CHECK(length(title) BETWEEN 1 AND 120),hypothesis text NOT NULL CHECK(length(hypothesis) BETWEEN 1 AND 500),
+        metric_definition jsonb NOT NULL,definition jsonb NOT NULL,
+        status text NOT NULL CHECK(status IN ('active','paused','completed')),created_at timestamptz NOT NULL,
+        UNIQUE(id,user_id,source)
+      );
+      CREATE INDEX experiments_user_time ON experiments(user_id,created_at DESC);
+      CREATE TABLE experiment_sessions (
+        id uuid PRIMARY KEY,user_id uuid NOT NULL,experiment_id uuid NOT NULL,source text NOT NULL,condition text NOT NULL,
+        start_time timestamptz NOT NULL,end_time timestamptz NOT NULL,recorded_at timestamptz NOT NULL,
+        metrics_json jsonb NOT NULL,user_rating integer CHECK(user_rating BETWEEN 1 AND 5),notes text CHECK(length(notes)<=500),
+        CHECK(end_time>start_time AND end_time-start_time<=interval '26 hours'),
+        FOREIGN KEY(experiment_id,user_id,source) REFERENCES experiments(id,user_id,source) ON DELETE CASCADE
+      );
+      CREATE INDEX experiment_sessions_owner_range ON experiment_sessions(user_id,experiment_id,start_time,end_time);
+      INSERT INTO trueiris_migrations(version) VALUES(4);
+    `);
+    }
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');

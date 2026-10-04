@@ -5,6 +5,7 @@ import {
   parseEnvironment,
 } from '@trueiris/shared/config';
 import type { Measurement } from '@trueiris/schemas';
+import { verifyExperiments } from './verify-experiments';
 import { verifyBaselines } from './verify-baseline';
 import { verifyContext } from './verify-context';
 import { migrate, SessionConflict, TigerStore } from './index';
@@ -236,6 +237,9 @@ try {
   assert.equal(bounded.summary.sessions, 2);
   assert.equal(bounded.summary.pulse.mean, 72);
   await verifyContext(store, users, base);
+  const experimentOwner = randomUUID();
+  users.push(experimentOwner);
+  await verifyExperiments(store, [experimentOwner, users[1]!]);
   const other = measurement(0, { sessionId: randomUUID(), source: 'live' });
   await store.ingest(users[1]!, [other]);
   await store.deleteData(users[0]!);
@@ -259,7 +263,7 @@ try {
   const location =
     error instanceof Error
       ? error.stack?.match(
-          /(?:verify(?:-context|-baseline)?|timeline|baseline)\.ts:\d+:\d+/,
+          /(?:verify(?:-context|-baseline|-experiments)?|timeline|baseline)\.ts:\d+:\d+/,
         )?.[0]
       : undefined;
   if (typeof code === 'string' && /^[A-Z0-9_]{5,32}$/.test(code))

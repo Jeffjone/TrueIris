@@ -17,11 +17,11 @@ Complete one feature, validate, review the diff, update documentation, commit, p
 | P1       | Semantic memory                     | Session summaries, embedding model/dimension, scoped similarity retrieval with factual metadata                                                           |
 | P1       | Patterns                            | Editorial evidence cards; sample counts, uncertainty, correlation language                                                                                |
 | P1       | Focus mode                          | Goal, timer, switches, baseline comparison, completion summary                                                                                            |
-| P1       | Event reconstruction                | Selected range → timestamped observations → grounded narrative                                                                                            |
+| P1       | Event reconstruction (completed)    | Selected range → timestamped observations → grounded narrative                                                                                            |
 | P1       | Demo data                           | Deterministic multi-day history marked `demo_seed`; targeted clear operation                                                                              |
 | P1       | Demo mode                           | Explicit fallback with correct provenance; real sensing preferred; repeatable questions and visible diagnostic health                                     |
 | P1       | Vultr deployment                    | Docker runtime, TLS/auth, health/readiness, managed database, reproducible deployment instructions                                                        |
-| P2       | Experiments                         | Conditions, minimum sessions, self-report; association vs insufficient evidence                                                                           |
+| P2       | Experiments (completed)             | Conditions, minimum sessions, self-report; association vs insufficient evidence                                                                           |
 | P2       | Proactive insights                  | Personal evidence, conservative cadence, user control                                                                                                     |
 | P2       | Optional screen context             | Explicit opt-in, visible activation, temporary downscaled image, classification only, discard pixels                                                      |
 
@@ -79,3 +79,7 @@ ElevenLabs realtime STT displays partial/final transcripts and sends committed q
 ## Feature 16 completed
 
 Selected timeline ranges can be reconstructed into timestamped first-party observations and a Gemini-ordered cited narrative. The agent pins selection and source, with explicit ambiguity, gaps and unavailable baseline states. Tests cover privacy, evidence gating, owner/range scope, cancellation and the built desktop. See [event reconstruction](EVENT_RECONSTRUCTION.md).
+
+## Feature 17 completed
+
+Experiments persist immutable hypotheses, two conditions, measurement thresholds and minimum sessions. Manually labeled completed periods carry optional focus ratings and evidence-backed baseline deviations, with independent eligibility per measure and four descriptive result states. Strict private capabilities, owner-serialized database operations, idempotent retries, private export, session removal and cascading history deletion preserve the existing architecture. Contract/analytics/API/main, built desktop and isolated real Timescale checks cover the feature. See [personal experiments](PERSONAL_EXPERIMENTS.md).

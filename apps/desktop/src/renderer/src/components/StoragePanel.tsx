@@ -142,7 +142,9 @@ export function StoragePanel({ storage }: { storage: StorageControls }) {
         </button>
       </div>
       <div className="settings-row">
-        <span>Remove saved measurements, summaries and desktop context</span>
+        <span>
+          Remove saved measurements, summaries, desktop context and experiments
+        </span>
         <button
           disabled={busy || !status?.configured}
           onClick={() => {

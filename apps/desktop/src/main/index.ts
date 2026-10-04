@@ -1,3 +1,4 @@
+import { ExperimentClient } from './experiments';
 import {
   app,
   dialog,
@@ -12,6 +13,7 @@ import {
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
+  EXPERIMENT_CHANNELS,
   VOICE_CHANNELS,
   REASONING_CHANNELS,
   CONTEXT_CHANNELS,
@@ -32,6 +34,8 @@ import {
   voiceOptionsSchema,
   voiceAudioSchema,
   type CurrentState,
+  experimentActionSchema,
+  experimentIdSchema,
   reconstructionQuerySchema,
   askQuerySchema,
   contextOptionsSchema,
@@ -70,6 +74,10 @@ const directory = dirname(fileURLToPath(import.meta.url));
 let mainWindow: BrowserWindow | null = null;
 let sensor: SensorController;
 let context: ContextController;
+const experiments = new ExperimentClient(
+  env.TRUEIRIS_API_URL,
+  env.TRUEIRIS_INGEST_TOKEN,
+);
 const voice = new VoiceClient(
   env.TRUEIRIS_API_URL,
   env.TRUEIRIS_INGEST_TOKEN,
@@ -394,6 +402,43 @@ void app
           details.mediaType === 'audio',
         ),
     );
+    ipcMain.handle(EXPERIMENT_CHANNELS.action, (event, input: unknown) => {
+      assertTrusted(event);
+      if (managingData) throw new Error('Data action in progress');
+      return experiments.action(experimentActionSchema.parse(input));
+    });
+    ipcMain.handle(
+      EXPERIMENT_CHANNELS.export,
+      async (event, input: unknown) => {
+        assertTrusted(event);
+        const id = experimentIdSchema.parse(input);
+        if (managingData || !mainWindow) return 'failed';
+        managingData = true;
+        try {
+          const selection = await dialog.showSaveDialog(mainWindow, {
+            title: 'Export experiment',
+            defaultPath: 'trueiris-experiment.json',
+            filters: [{ name: 'JSON', extensions: ['json'] }],
+          });
+          if (selection.canceled || !selection.filePath) return 'cancelled';
+          await enableSaving(false);
+          exportAbort = new AbortController();
+          exportOperation = experiments.export(
+            id,
+            selection.filePath,
+            exportAbort.signal,
+          );
+          await exportOperation;
+          return 'saved';
+        } catch {
+          return 'failed';
+        } finally {
+          exportAbort = null;
+          exportOperation = null;
+          managingData = false;
+        }
+      },
+    );
     ipcMain.handle(VOICE_CHANNELS.get, (event) => {
       assertTrusted(event);
       return voice.get();
@@ -576,7 +621,7 @@ void app
           type: 'warning',
           title: 'Delete saved history?',
           message:
-            'Delete all your saved measurements, aggregates and desktop context?',
+            'Delete all your saved measurements, aggregates, desktop context and experiments?',
           detail:
             'This also stops sensing and saving. Deletion cannot be undone.',
           buttons: ['Cancel', 'Delete history'],

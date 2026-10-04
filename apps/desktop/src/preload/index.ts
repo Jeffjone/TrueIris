@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import {
+  EXPERIMENT_CHANNELS,
   VOICE_CHANNELS,
   REASONING_CHANNELS,
   CONTEXT_CHANNELS,
@@ -16,6 +17,9 @@ import {
   voiceAudioSchema,
   voiceEventSchema,
   voiceSnapshotSchema,
+  experimentActionSchema,
+  experimentOutcomeSchema,
+  experimentIdSchema,
   reconstructionQuerySchema,
   askQuerySchema,
   agentResultSchema,
@@ -35,6 +39,20 @@ import {
 } from '@trueiris/schemas';
 
 const bridge: DesktopBridge = {
+  experimentAction: async (action) =>
+    experimentOutcomeSchema.parse(
+      await ipcRenderer.invoke(
+        EXPERIMENT_CHANNELS.action,
+        experimentActionSchema.parse(action),
+      ),
+    ),
+  exportExperiment: async (id) => {
+    const result: unknown = await ipcRenderer.invoke(
+      EXPERIMENT_CHANNELS.export,
+      experimentIdSchema.parse(id),
+    );
+    return result === 'saved' || result === 'cancelled' ? result : 'failed';
+  },
   getVoice: async () =>
     voiceSnapshotSchema.parse(await ipcRenderer.invoke(VOICE_CHANNELS.get)),
   startVoice: async (options) =>

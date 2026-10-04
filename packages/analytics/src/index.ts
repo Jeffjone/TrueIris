@@ -74,3 +74,4 @@ export function calculateEpoch(measurements: Measurement[]) {
 }
 export type Epoch = ReturnType<typeof calculateEpoch>;
 export * from './baseline';
+export { compareExperiment } from './experiments';

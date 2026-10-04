@@ -65,3 +65,7 @@ Start voice discloses microphone transport to ElevenLabs, question/evidence tran
 ## Feature 16 event reconstruction
 
 An explicit question about a selected timeline period sends verified recorded-event facts to Gemini. No window titles, raw media, task contents or inferred intentions are sent. Narratives and sequences remain in request/view memory and clear on selection/source/timezone/navigation changes. Existing sensing, saving, scoped history and cancellation boundaries apply. See [event reconstruction](EVENT_RECONSTRUCTION.md).
+
+## Feature 17 personal experiments
+
+Creating a definition or recording a labeled session explicitly saves the hypothesis, conditions, criteria, status, optional rating/notes and an immutable snapshot of derived physiological evidence. It starts no sensing and sends no content to Gemini or ElevenLabs. Session recording is an explicit save independent of automatic observation saving. The server owns identity; experiment sources remain separate. Notes and ratings are never logged. Individual removal and global history deletion cover experiment records and snapshots; the history deletion watermark prevents old-range replay. Native JSON export includes this private metadata, disables automatic saving and uses private permissions. Previously exported files stay under your control. See [experiment controls, evidence and limitations](PERSONAL_EXPERIMENTS.md).

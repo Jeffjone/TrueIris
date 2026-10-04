@@ -1,3 +1,11 @@
+import { TigerExperiments, type ExperimentStore } from './experiments';
+export {
+  TigerExperiments,
+  MemoryExperiments,
+  ExperimentConflict,
+  ExperimentNotFound,
+  type ExperimentStore,
+} from './experiments';
 import { readFileSync } from 'node:fs';
 import { Pool, type PoolClient, type PoolConfig } from 'pg';
 import { calculateEpoch, epochStart, EPOCH_MS } from '@trueiris/analytics';
@@ -18,7 +26,7 @@ import { querySimilarSessions } from './similar';
 import type { SimilarQuery, SimilarData } from '@trueiris/schemas';
 import { queryBaselines } from './baseline';
 import type { BaselineQuery, BaselineData } from '@trueiris/schemas';
-import { queryTimeline } from './timeline';
+import { queryTimeline, queryTimelineInTransaction } from './timeline';
 export { migrate } from './migration';
 
 /** Strip URL SSL switches so they cannot override strict TLS options in pg. */
@@ -103,6 +111,7 @@ export function deserializeMeasurement(row: MeasurementRow): Measurement {
 const selectMeasurements = `SELECT m.*, s.started_at FROM measurements m JOIN sessions s ON s.id = m.session_id`;
 
 export interface MeasurementStore {
+  experiments?: ExperimentStore;
   health(): Promise<boolean>;
   similarSessions(userId: string, query: SimilarQuery): Promise<SimilarData>;
   baselines(userId: string, query: BaselineQuery): Promise<BaselineData>;
@@ -125,15 +134,25 @@ export interface MeasurementStore {
 }
 export class TigerStore implements MeasurementStore {
   readonly pool: Pool;
+  readonly experiments: ExperimentStore;
   constructor(connectionString: string, caFile?: string) {
     this.pool = new Pool(databaseOptions(connectionString, caFile));
     // Never emit database errors containing SQL, parameters or connection details.
     this.pool.on('error', () => {});
+    this.experiments = new TigerExperiments(
+      this.pool,
+      (client) => ({
+        timeline: (owner, range) =>
+          queryTimelineInTransaction(client, owner, range),
+        baselines: (owner, query) => queryBaselines(client, owner, query),
+      }),
+      (owner, work) => this.transaction(owner, work),
+    );
   }
   async health() {
     try {
       const result = await this.pool
-        .query(`SELECT EXISTS (SELECT 1 FROM trueiris_migrations WHERE version = 3) AS ready,
+        .query(`SELECT EXISTS (SELECT 1 FROM trueiris_migrations WHERE version = 4) AS ready,
         EXISTS (SELECT 1 FROM timescaledb_information.hypertables WHERE hypertable_name = 'measurements' AND hypertable_schema = 'public') AS hypertable`);
       return (
         result.rows[0]?.ready === true && result.rows[0]?.hypertable === true
@@ -313,6 +332,7 @@ export class TigerStore implements MeasurementStore {
         'UPDATE users SET deleted_before=clock_timestamp() WHERE id=$1',
         [userId],
       );
+      await client.query('DELETE FROM experiments WHERE user_id=$1', [userId]);
       await client.query('DELETE FROM epochs WHERE user_id=$1', [userId]);
       await client.query('DELETE FROM measurements WHERE user_id=$1', [userId]);
       await client.query('DELETE FROM sessions WHERE user_id=$1', [userId]);

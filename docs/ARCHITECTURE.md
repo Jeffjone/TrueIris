@@ -97,8 +97,8 @@ Ingestion uses bounded batches, idempotent event identifiers, bounded retry with
 | `insights`            | ID, timestamp, user, type, description, evidence JSON, confidence, source                                     | Ordinary table; user/time/type                                                                        |
 | `journal_entries`     | ID, timestamp, user, text, embedding, tags, source                                                            | Ordinary table; user/time plus vector index when dimension/model is chosen                            |
 | `memories`            | ID, start/end, user, summary, embedding, metric/context metadata, evidence IDs, source                        | Ordinary table; user/start and vector similarity                                                      |
-| `experiments`         | ID, user, title, hypothesis, metric definition, conditions, minimum sessions, status, created time            | Ordinary table; user/status                                                                           |
-| `experiment_sessions` | ID, experiment ID, condition, start/end, metrics JSON, rating, notes, source                                  | Ordinary table; experiment/start                                                                      |
+| `experiments`         | ID, user, source, title, hypothesis, immutable definition/criteria, status, created time                      | Ordinary table; owner/created time                                                                    |
+| `experiment_sessions` | ID, owner/experiment/source, condition, start/end, metrics/support JSON, rating, notes                        | Ordinary table; owner/experiment/start; cascading foreign key                                         |
 
 Use time-dimension columns in all hypertable unique constraints. Retain standard-table foreign keys for relational entities. Minute/15-minute/hourly/daily continuous aggregates are introduced only for demonstrated query needs, keeping metric counts and source separation. Activity summaries use epoch/context queries before introducing expensive materialization. Configure retention deliberately rather than enabling automatic loss of hackathon history.
 
@@ -173,3 +173,7 @@ The canonical text command and one-click Ask Iris action share the existing auth
 ## Feature 16 selected event reconstruction
 
 A narrow reconstruction IPC operation projects a fixed question and source-bound selection into the existing Gemini agent. Its allowlisted tool reconstructs chronological first-party context, epoch, baseline and gap events. Gemini selects existing cited facts; the server verifies every answer sentence and pins the response range. Timeline reuses the shared agent-answer view. No new capture, persistent cache, database migration or provider is introduced. See [event reconstruction](EVENT_RECONSTRUCTION.md).
+
+## Feature 17 personal experiments
+
+Migration 4 adds owner/source-scoped experiment definitions and labeled sessions, with cascading deletion. The authenticated action route applies strict shared contracts and pure descriptive analytics; the server computes physiological metrics from accepted matching activity/source history and earlier baselines. Owner-row locks serialize mutations with ingestion/deletion, and evidence queries reuse the held transaction connection. Immutable criteria and snapshots preserve what was tested; missing evidence stays null. Named main/preload capabilities provide bounded transport and atomic native JSON export. The explicit in-memory adapter is test-only; no provider or sensing flow is invoked. See [personal experiments](PERSONAL_EXPERIMENTS.md) for eligibility and descriptive comparison rules.
