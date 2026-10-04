@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import {
+  VOICE_CHANNELS,
   REASONING_CHANNELS,
   CONTEXT_CHANNELS,
   STATUS_CHANNEL,
@@ -11,6 +12,10 @@ import {
   type DesktopBridge,
 } from '@trueiris/shared';
 import {
+  voiceOptionsSchema,
+  voiceAudioSchema,
+  voiceEventSchema,
+  voiceSnapshotSchema,
   askQuerySchema,
   agentResultSchema,
   contextSnapshotSchema,
@@ -29,6 +34,39 @@ import {
 } from '@trueiris/schemas';
 
 const bridge: DesktopBridge = {
+  getVoice: async () =>
+    voiceSnapshotSchema.parse(await ipcRenderer.invoke(VOICE_CHANNELS.get)),
+  startVoice: async (options) =>
+    voiceSnapshotSchema.parse(
+      await ipcRenderer.invoke(
+        VOICE_CHANNELS.start,
+        voiceOptionsSchema.parse(options),
+      ),
+    ),
+  stopVoice: async () => {
+    await ipcRenderer.invoke(VOICE_CHANNELS.stop);
+  },
+  sendVoiceAudio: async (chunk) => {
+    const accepted: unknown = await ipcRenderer.invoke(
+      VOICE_CHANNELS.audio,
+      voiceAudioSchema.parse(chunk),
+    );
+    return accepted === true;
+  },
+  finishVoice: async (id) => {
+    if (typeof id !== 'string') throw new Error('Invalid voice session');
+    await ipcRenderer.invoke(VOICE_CHANNELS.finish, id);
+  },
+  onVoice: (listener) => {
+    const receive = (_event: Electron.IpcRendererEvent, input: unknown) => {
+      const parsed = voiceEventSchema.safeParse(input);
+      if (parsed.success) listener(parsed.data);
+    };
+    ipcRenderer.on(VOICE_CHANNELS.update, receive);
+    return () => {
+      ipcRenderer.removeListener(VOICE_CHANNELS.update, receive);
+    };
+  },
   askIris: async (query) =>
     agentResultSchema.parse(
       await ipcRenderer.invoke(

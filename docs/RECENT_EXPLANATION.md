@@ -22,7 +22,7 @@ The narrative uses the existing verified descriptive sentences and citations. Pu
 
 The cited narrative and an **Explanation timeline** appear together in Ask Iris. The chart uses the existing authenticated timeline bridge to load the exact returned UTC window and source once. The entire 30 minutes are highlighted initially; dragging or arrow keys/Enter can inspect a recorded epoch, and **Highlight all 30 minutes** restores the full selection. Dates, local times, timezone and source are visible, including windows spanning midnight. Recorded gaps remain visible. Chart retrieval failure leaves the evidence available and reports that the chart could not load.
 
-The chart does not refresh automatically while the answer is visible. Late saved observations can be included in its initial fetch, so it is a scoped visualization rather than the numerical source of the already cited answer. A new explanation fixes a new window. Source/timezone changes, clear, navigation and reload clear the answer and highlight. Cancellation and deadlines use the existing agent controls. Voice remains off until its own implementation.
+The chart does not refresh automatically while the answer is visible. Late saved observations can be included in its initial fetch, so it is a scoped visualization rather than the numerical source of the already cited answer. A new explanation fixes a new window. Source/timezone changes, clear, navigation and reload clear the answer and highlight. Cancellation and deadlines use the existing agent controls. Voice remains off until explicitly started in Ask Iris. Feature 12 accepts the spoken command, uses this same evidence workflow and speaks its verified answer; see [voice controls](ELEVENLABS_VOICE.md).
 
 ## Validation
 

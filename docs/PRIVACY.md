@@ -10,7 +10,7 @@ Optional aggregate diagnostic telemetry is explicitly disabled with `enableTelem
 
 Keys remain in main/backend/worker configuration. The worker receives only its required Presage key through a private parent message and inherits an environment allowlist, excluding database and ingestion credentials. Strict schemas reject unknown event fields. Vendor free-text errors and raw native logs are discarded; application logs contain fixed lifecycle/error events and enums, not readings, SQL, URLs or credentials.
 
-Manual activity remains explicitly user-selected, clears on reload, and is never logged. With Feature 5, a selected fixed label accompanies new measurements only while saving is enabled and is sent to the configured API/Tiger Data. It is included in exports and removed with measurement deletion; no previous history is relabeled. Feature 6 foreground application detection requires a separate explicit start. No microphone, OS foreground application, window title, screenshots, journal or questions are captured automatically. Renderer permission requests remain denied; native camera permission is separate.
+Manual activity remains explicitly user-selected, clears on reload, and is never logged. With Feature 5, a selected fixed label accompanies new measurements only while saving is enabled and is sent to the configured API/Tiger Data. It is included in exports and removed with measurement deletion; no previous history is relabeled. Feature 6 foreground application detection requires a separate explicit start. No microphone, OS foreground application, window title, screenshots, journal or questions are captured automatically. Renderer microphone permission is leased only to the trusted frame during an explicitly started voice turn; other permissions remain denied. Native camera permission is separate.
 
 ## Measurement storage
 
@@ -32,7 +32,7 @@ Opening Timeline makes authenticated scoped history queries without activating s
 | Foreground app / switches / idle / session / focus | Explicit context start; titles separately opted in | Transient; context intervals only while saving is enabled          | Configured API/Tiger Data only when saving                                |
 | Manual activity                                    | User selection                                     | Transient choice; label on opted-in measurements/context           | Configured API/Tiger Data only when saving                                |
 | Screen image                                       | Planned separate opt-in                            | None                                                               | Planned transient Gemini classification                                   |
-| Microphone / spoken responses                      | Planned user-started voice                         | None                                                               | Planned ElevenLabs streaming                                              |
+| Microphone / spoken responses                      | Explicit Start voice + microphone permission       | None                                                               | ElevenLabs realtime STT / streaming TTS                                   |
 | Questions and retrieved evidence                   | Explicit Ask Iris action                           | Request/view memory only                                           | Gemini; no private window titles or raw media                             |
 | Journal and episodic summaries                     | Planned memory controls                            | None                                                               | Planned Tiger Data / Gemini                                               |
 
@@ -57,3 +57,7 @@ Sending a question from Ask Iris shares its text and requested projected evidenc
 ## Feature 10 recent explanation
 
 The dedicated action shares the same disclosure and provider privacy boundary as a typed question. It reads only the selected source, pinned recent window and bounded earlier evidence. The chart fetch remains within the authenticated timeline capability and does not send raw chart data to Gemini. Its highlight and narrative clear with the question/view; no narrative, chart snapshot, screenshot or voice recording is persisted. No extra capture or retention is introduced. See [recent explanation](RECENT_EXPLANATION.md).
+
+## Feature 12 voice
+
+Start voice discloses microphone transport to ElevenLabs, question/evidence transport to Gemini and answer transport to ElevenLabs. PCM, partial/final transcripts and playback buffers are transient; TrueIris does not persist or log them. The microphone stops before reasoning/speech. Stop/interruption, clear, source/timezone changes, navigation/reload/crash, close/quit, suspend/lock and deletion release capture/transport. Gemini remains the reasoning owner and receives the same evidence projection as text. Provider retention policies still apply; no provider zero-retention guarantee is implied. See [voice privacy, controls and validation](ELEVENLABS_VOICE.md).

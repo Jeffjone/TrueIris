@@ -10,16 +10,19 @@
     "build": "tsup"
   },
   "dependencies": {
+    "@fastify/websocket": "^11.3.1",
+    "@trueiris/db": "workspace:*",
     "@trueiris/schemas": "workspace:*",
     "@trueiris/shared": "workspace:*",
-    "fastify": "^5.12.5",
     "dotenv": "^17.2.3",
+    "fastify": "^5.12.5",
+    "pg": "^8.16.3",
     "pino": "^10.0.0",
-    "zod": "^4.6.5",
-    "@trueiris/db": "workspace:*",
-    "pg": "^8.16.3"
+    "ws": "^8.22.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@types/ws": "^8.18.2",
     "tsup": "^8.5.0",
     "tsx": "^4.20.6"
   }

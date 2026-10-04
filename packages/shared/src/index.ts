@@ -1,4 +1,8 @@
 import type {
+  VoiceOptions,
+  VoiceAudio,
+  VoiceEvent,
+  VoiceSnapshot,
   AskQuery,
   AgentResult,
   BaselineQuery,
@@ -39,6 +43,15 @@ export const CONTEXT_CHANNELS = {
   update: 'trueiris:context:update',
 } as const;
 
+export const VOICE_CHANNELS = {
+  get: 'trueiris:voice:get',
+  start: 'trueiris:voice:start',
+  stop: 'trueiris:voice:stop',
+  audio: 'trueiris:voice:audio',
+  finish: 'trueiris:voice:finish',
+  update: 'trueiris:voice:update',
+} as const;
+
 export const REASONING_CHANNELS = {
   ask: 'trueiris:reasoning:ask',
   cancel: 'trueiris:reasoning:cancel',
@@ -49,6 +62,12 @@ export const ACTIVITY_CHANNEL = 'trueiris:activity:set';
 
 /** Named, validated capabilities only; never expose generic IPC or credentials. */
 export interface DesktopBridge {
+  getVoice(): Promise<VoiceSnapshot>;
+  startVoice(options: VoiceOptions): Promise<VoiceSnapshot>;
+  stopVoice(): Promise<void>;
+  sendVoiceAudio(chunk: VoiceAudio): Promise<boolean>;
+  finishVoice(sessionId: string): Promise<void>;
+  onVoice(listener: (event: VoiceEvent) => void): () => void;
   askIris(query: AskQuery): Promise<AgentResult>;
   cancelIris(): Promise<void>;
   getStatus(): Promise<DesktopStatus>;

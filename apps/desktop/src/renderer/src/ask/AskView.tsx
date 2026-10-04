@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AgentResult, AskQuery } from '@trueiris/schemas';
+import { VoiceControls } from '../voice/VoiceControls';
 import { ExplanationTimeline } from './ExplanationTimeline';
 
 export function AskView() {
@@ -10,6 +11,8 @@ export function AskView() {
   );
   const [result, setResult] = useState<AgentResult | null>(null),
     [busy, setBusy] = useState(false);
+  const [voiceActive, setVoiceActive] = useState(false),
+    [voiceRevision, setVoiceRevision] = useState(0);
   const generation = useRef(0);
   useEffect(
     () => () => {
@@ -19,7 +22,7 @@ export function AskView() {
     [],
   );
   async function ask(command = question) {
-    if (!command.trim() || busy) return;
+    if (!command.trim() || busy || voiceActive) return;
     setQuestion(command);
     const version = ++generation.current;
     setResult(null);
@@ -43,6 +46,7 @@ export function AskView() {
     generation.current++;
     setResult(null);
     setBusy(false);
+    setVoiceRevision((value) => value + 1);
     void window.trueiris?.cancelIris().catch(() => {});
   }
   const zones = Array.from(
@@ -70,8 +74,8 @@ export function AskView() {
         <p className="muted">
           Sending a question shares it and requested summaries of your selected
           history with Gemini. Window titles, camera frames and screenshots are
-          excluded. Questions and answers are kept in this view only. Voice
-          remains off.
+          excluded. Questions and answers are kept in this view only. Voice can
+          be started separately below.
         </p>
         <div className="timeline-toolbar">
           <label>
@@ -105,6 +109,14 @@ export function AskView() {
             </select>
           </label>
         </div>
+        <VoiceControls
+          key={`${source}:${timezone}:${voiceRevision}`}
+          options={{ source, timezone }}
+          disabled={busy}
+          onQuestion={setQuestion}
+          onResult={setResult}
+          onActive={setVoiceActive}
+        />
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -122,20 +134,20 @@ export function AskView() {
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             placeholder="When was my pulse lowest today?"
-            disabled={busy}
+            disabled={busy || voiceActive}
           />
           <div className="timeline-toolbar">
             <button
               className="sensor-button"
               type="submit"
-              disabled={busy || !question.trim()}
+              disabled={busy || voiceActive || !question.trim()}
             >
               {busy ? 'Retrieving evidence…' : 'Ask Iris'}
             </button>
             <button
               className="sensor-button"
               type="button"
-              disabled={busy}
+              disabled={busy || voiceActive}
               onClick={() => void ask('Iris, explain the last 30 minutes.')}
             >
               Explain last 30 minutes

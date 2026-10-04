@@ -1054,3 +1054,20 @@ h2 {
     padding: 16px;
   }
 }
+
+.iris-voice {
+  padding: 20px;
+  margin-bottom: 24px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.iris-voice .muted {
+  margin-top: 0;
+}
+.voice-state {
+  color: #29372e;
+  font-weight: 600;
+}
+.iris-voice [aria-label$='transcript'] {
+  overflow-wrap: anywhere;
+}

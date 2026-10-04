@@ -20,7 +20,7 @@ flowchart LR
 
 The renderer has no Node integration and no API credentials. The preload bundles its dependencies into CommonJS because sandboxed Electron preloads cannot use a normal Node module loader. It exposes named status, sensor get/start/stop, and validated event subscription operations rather than generic IPC. Main rejects calls from other web contents and subframes. External navigation, new windows, webviews, and renderer permissions are denied. Main requests native camera permission only for a user-started Presage session. A local CSP limits renderer resources. Production uses local HTML and hash routing; development uses electron-vite HMR.
 
-API configuration and secrets stay in the main/backend processes. Only validated, nonsecret status and normalized readings reach React. `/health` reports process liveness plus a verified Timescale migration/hypertable check; database is `ready` or `unavailable`, while reasoning reports configured availability and voice remains `not_implemented`. Main verifies the response and reports `unavailable` after failed requests, invalid payloads, redirects, or a 2.5-second timeout. UI rechecks every five seconds without crashing when the API is stopped.
+API configuration and secrets stay in the main/backend processes. Only validated, nonsecret status and normalized readings reach React. `/health` reports process liveness plus a verified Timescale migration/hypertable check; database is `ready` or `unavailable`, while reasoning reports configured availability and voice reports configured availability. Main verifies the response and reports `unavailable` after failed requests, invalid payloads, redirects, or a 2.5-second timeout. UI rechecks every five seconds without crashing when the API is stopped.
 
 ## Target evidence flow
 
@@ -45,7 +45,7 @@ flowchart TD
   ANSWER --> TTS[ElevenLabs streaming TTS]
 ```
 
-Sensor events, opt-in authenticated persistence and pure 30-second epoch analytics are implemented. The Today timeline and optional recorded manual activity are implemented. Opt-in OS context and interval history are implemented in Feature 6. Personal activity/time-of-day baselines are implemented in Feature 8; the Gemini tool-calling agent is implemented in Feature 9; semantic memory and voice remain planned.
+Sensor events, opt-in authenticated persistence and pure 30-second epoch analytics are implemented. The Today timeline and optional recorded manual activity are implemented. Opt-in OS context and interval history are implemented in Feature 6. Personal activity/time-of-day baselines are implemented in Feature 8; the Gemini tool-calling agent is implemented in Feature 9; Feature 12 implements ElevenLabs voice; semantic memory remains planned.
 
 ## Workspace ownership
 
@@ -66,7 +66,7 @@ Shared workspace packages export TypeScript source and are bundled into applicat
 
 ## Provider boundaries
 
-Feature 2 implements `SensorProvider` with real Presage and explicit mock adapters. Feature 6 adds native and explicit mock `ContextProvider` adapters. Feature 9 adds `ReasoningProvider`; later services add `EmbeddingProvider` and `VoiceProvider` with deterministic mock implementations and failure tests. Adapters normalize vendor responses and hide vendor types from UI/analytics. Unsupported or unauthorized metrics stay absent; absence is never a zero measurement.
+Feature 2 implements `SensorProvider` with real Presage and explicit mock adapters. Feature 6 adds native and explicit mock `ContextProvider` adapters. Feature 9 adds `ReasoningProvider`; Feature 12 adds `VoiceProvider`; a later service adds `EmbeddingProvider` with deterministic mock implementations and failure tests. Adapters normalize vendor responses and hide vendor types from UI/analytics. Unsupported or unauthorized metrics stay absent; absence is never a zero measurement.
 
 Native sensing runs in a main-owned utility process, keeping blocking native startup and raw frames outside main and renderer. Main owns a session/generation controller: concurrent starts are bounded, canceled permission requests cannot later start capture, late events are ignored, and failed teardown blocks replacement capture. Native stopAsync/destroy is awaited with a bounded kill fallback. Stop, document reload, renderer crash, window close, and quit release the worker; hash navigation preserves the session. React subscribes once across routes and shows a persistent status/Stop control.
 
@@ -110,7 +110,7 @@ Gemini chooses from allowlisted tools such as `get_current_state`, `get_metrics`
 
 The response contract contains answer text, evidence cards, and a validated recent-explanation timeline range. It never exposes hidden reasoning. “Explain the last 30 minutes” composes temporal metrics, context, baseline comparisons, and similar sessions when available. Numerical claims must link to retrieved evidence; insufficient history is stated. No medical diagnoses or causal claims from correlations.
 
-ElevenLabs STT uses a backend-issued single-use token where supported, with microphone opt-in and visible partial/final transcripts. Text remains available when voice fails. TTS streams through the backend or another officially supported short-lived credential path. The Gemini loop remains the reasoning owner; do not substitute an opaque vendor conversational agent. Audio and screenshots are not persisted or logged by default.
+ElevenLabs STT and streaming TTS run entirely behind the authenticated API WebSocket. Main owns the private transport and microphone permission lease; narrow IPC carries bounded PCM frames and validated events. The renderer receives no vendor credential. Microphone opt-in, partial/final transcripts, explicit interruption and text fallback are implemented. See [voice architecture and limits](ELEVENLABS_VOICE.md). The Gemini loop remains the reasoning owner; do not substitute an opaque vendor conversational agent. Audio and screenshots are not persisted or logged by default.
 
 ## Deployment and authentication
 
@@ -140,7 +140,7 @@ See [privacy inventory](PRIVACY.md). Logs use structured event names and avoid a
 - [TimescaleDB hypertable constraints](https://docs.tigerdata.com/timescaledb/latest/overview/limitations/)
 - [Tiger Data documentation](https://www.tigerdata.com/docs)
 - [Gemini function calling](https://ai.google.dev/gemini-api/docs/function-calling)
-- [ElevenLabs client realtime STT](https://elevenlabs.io/docs/eleven-api/guides/how-to/speech-to-text/realtime/client-side-streaming)
+- [ElevenLabs server realtime STT](https://elevenlabs.io/docs/eleven-api/guides/how-to/speech-to-text/realtime/server-side-streaming)
 
 ## Feature 4 persistence
 

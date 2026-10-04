@@ -113,12 +113,18 @@ function Settings({
         </p>
         <SensorPanel sensor={sensor} />
         <ContextPanel context={context} />
-        {['Screen understanding', 'Voice'].map((label) => (
+        {['Screen understanding'].map((label) => (
           <div className="settings-row" key={label}>
             <span>{label}</span>
             <span className="pill">Off · not connected</span>
           </div>
         ))}
+        <div className="settings-row">
+          <span>Voice</span>
+          <span>
+            Off · <NavLink to="/ask-iris">Start in Ask Iris</NavLink>
+          </span>
+        </div>
         <div className="settings-row">
           <span>Demo configuration</span>
           <span>
@@ -151,7 +157,9 @@ function Settings({
                 ? status?.integrations?.reasoning === 'ready'
                   ? 'Configured · checked when you ask'
                   : 'Unavailable · check backend configuration'
-                : 'Not integrated'}
+                : status?.integrations?.voice === 'ready'
+                  ? 'Configured · checked when you start voice'
+                  : 'Unavailable · check backend configuration'}
             </span>
           </div>
         ))}

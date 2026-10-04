@@ -1,3 +1,6 @@
+import websocket from '@fastify/websocket';
+import { VoiceService } from './voice/service';
+import type { VoiceProvider } from './voice/provider';
 import { AgentService } from './agents/agent';
 import type { ReasoningProvider } from './agents/provider';
 import Fastify, { LogController } from 'fastify';
@@ -23,6 +26,7 @@ import { loggerOptions } from '@trueiris/shared/logging';
 import { SessionConflict, type MeasurementStore } from '@trueiris/db';
 
 interface ApiOptions {
+  voice?: VoiceProvider;
   reasoning?: ReasoningProvider;
   store?: MeasurementStore;
   token?: string;
@@ -40,6 +44,10 @@ export function buildApp(logLevel = 'info', options: ApiOptions = {}) {
     store && userId && reasoning
       ? new AgentService(reasoning, store, userId)
       : null;
+  const voice = options.voice ? new VoiceService(options.voice, agent) : null;
+  app.register(websocket, {
+    options: { maxPayload: 16 * 1024, perMessageDeflate: false },
+  });
   let windowStart = Date.now();
   let requests = 0;
   app.setErrorHandler((error, _request, reply) => {
@@ -59,7 +67,11 @@ export function buildApp(logLevel = 'info', options: ApiOptions = {}) {
             ? 'ready'
             : 'unavailable'
           : 'not_implemented',
-        voice: 'not_implemented',
+        voice: voice
+          ? voice.provider.configured
+            ? 'ready'
+            : 'unavailable'
+          : 'not_implemented',
       },
     }),
   );
@@ -87,6 +99,26 @@ export function buildApp(logLevel = 'info', options: ApiOptions = {}) {
       if (!store)
         return reply.code(503).send({ error: 'Storage is unavailable' });
     });
+    privateApp.get(
+      '/voice/stream',
+      {
+        websocket: true,
+        preValidation: async (request, reply) => {
+          if (
+            request.headers.origin ||
+            Object.keys(request.query as object).length
+          )
+            return reply.code(400).send({ error: 'Invalid voice transport' });
+        },
+      },
+      (socket) => {
+        if (!voice) {
+          socket.close(1008, 'not_configured');
+          return;
+        }
+        voice.attach(socket);
+      },
+    );
     privateApp.post('/measurements/batch', async (request, reply) => {
       const parsed = measurementBatchSchema.safeParse(request.body);
       if (
@@ -207,6 +239,7 @@ export function buildApp(logLevel = 'info', options: ApiOptions = {}) {
     });
     privateApp.delete('/data', async (_request, reply) => {
       try {
+        voice?.cancel();
         agent?.cancel();
         await store!.deleteData(userId!);
         return reply.code(204).send();
@@ -214,6 +247,10 @@ export function buildApp(logLevel = 'info', options: ApiOptions = {}) {
         return reply.code(503).send({ error: 'Deletion is unavailable' });
       }
     });
+  });
+  app.addHook('preClose', async () => {
+    voice?.cancel();
+    agent?.cancel();
   });
   app.addHook('onClose', async () => {
     agent?.cancel();

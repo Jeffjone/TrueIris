@@ -70,4 +70,8 @@ Gemini selects validated read-only tools and assembles answers from cited facts 
 
 ## Feature 10 verification
 
-The one-click and typed “Iris, explain the last 30 minutes” action pins a source-scoped 30-minute window, requires metrics/context/baselines/earlier sessions, and displays a cited descriptive narrative beside its highlighted timeline. Sparse, missing, mixed, low-confidence and insufficient-history evidence remains explicit. Unit/schema, built desktop, real Tiger Data persistence-to-explanation and opt-in live Gemini synthetic-fixture checks cover the flow. Voice and semantic similarity remain deferred. See [recent explanation behavior](RECENT_EXPLANATION.md).
+The one-click and typed “Iris, explain the last 30 minutes” action pins a source-scoped 30-minute window, requires metrics/context/baselines/earlier sessions, and displays a cited descriptive narrative beside its highlighted timeline. Sparse, missing, mixed, low-confidence and insufficient-history evidence remains explicit. Unit/schema, built desktop, real Tiger Data persistence-to-explanation and opt-in live Gemini synthetic-fixture checks cover the flow. Semantic similarity remains deferred. Feature 12 adds explicit voice turns. See [recent explanation behavior](RECENT_EXPLANATION.md).
+
+## Feature 12 completed
+
+ElevenLabs realtime STT displays partial/final transcripts and sends committed questions through the existing Gemini tools, then streams the verified cited answer as PCM speech. Main owns authentication and a trusted-frame microphone lease; renderer controls provide listening/reasoning/speaking states, stop/interruption and typed fallback. No raw audio persistence, always-on capture or automatic mock fallback is added. Protocol/provider, owner scope, cancellation/failure, built fake-microphone and live synthetic provider checks cover the loop. Target hardware acceptance remains interactive. See [voice setup and validation](ELEVENLABS_VOICE.md).

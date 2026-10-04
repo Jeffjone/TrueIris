@@ -12,6 +12,7 @@ import {
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
+  VOICE_CHANNELS,
   REASONING_CHANNELS,
   CONTEXT_CHANNELS,
   STATUS_CHANNEL,
@@ -28,6 +29,9 @@ import {
 import { createLogger } from '@trueiris/shared/logging';
 import { getDesktopStatus } from './status';
 import {
+  voiceOptionsSchema,
+  voiceAudioSchema,
+  type CurrentState,
   askQuerySchema,
   contextOptionsSchema,
   activitySchema,
@@ -44,6 +48,7 @@ import {
   storageConfigured,
 } from './storage/queue';
 import { exportMeasurements } from './storage/files';
+import { VoiceClient } from './voice';
 import { ReasoningClient } from './reasoning';
 import { getBaselines } from './baseline';
 import { getTimeline } from './timeline';
@@ -64,6 +69,27 @@ const directory = dirname(fileURLToPath(import.meta.url));
 let mainWindow: BrowserWindow | null = null;
 let sensor: SensorController;
 let context: ContextController;
+const voice = new VoiceClient(
+  env.TRUEIRIS_API_URL,
+  env.TRUEIRIS_INGEST_TOKEN,
+  (event) => {
+    if (mainWindow && !mainWindow.webContents.isDestroyed())
+      mainWindow.webContents.send(VOICE_CHANNELS.update, event);
+  },
+);
+function currentState(): CurrentState {
+  const sensed = sensor.get(),
+    desktop = context.get();
+  return {
+    sensor: sensed.phase,
+    reading: sensed.reading,
+    context: desktop.phase,
+    contextSource: desktop.provider === 'mock' ? 'mock' : 'live',
+    application: desktop.application?.name ?? null,
+    activity,
+    saving: storageStatus().enabled,
+  };
+}
 const storage = new MeasurementQueue(
   storageConfigured(env.TRUEIRIS_API_URL, env.TRUEIRIS_INGEST_TOKEN),
   createBatchSender(env.TRUEIRIS_API_URL, env.TRUEIRIS_INGEST_TOKEN),
@@ -203,6 +229,7 @@ function createWindow() {
   );
   window.webContents.on('render-process-gone', (_event, details) => {
     logger.error({ event: 'renderer_stopped', reason: details.reason });
+    voice.stop();
     reasoning.cancel();
     activity = null;
     context?.setManual(null);
@@ -211,6 +238,7 @@ function createWindow() {
   });
   window.webContents.on('did-start-navigation', (details) => {
     if (details.isMainFrame && !details.isSameDocument) {
+      voice.stop();
       reasoning.cancel();
       activity = null;
       context?.setManual(null);
@@ -224,6 +252,7 @@ function createWindow() {
   window.once('ready-to-show', () => window.show());
   window.once('closed', () => {
     mainWindow = null;
+    voice.stop();
     reasoning.cancel();
     activity = null;
     context?.setManual(null);
@@ -257,8 +286,14 @@ void app
       (interval) => contextStorage.enqueue(interval),
       () => contextStorage.get(),
     );
-    powerMonitor.on('suspend', () => context.stop());
-    powerMonitor.on('lock-screen', () => context.stop());
+    powerMonitor.on('suspend', () => {
+      voice.stop();
+      context.stop();
+    });
+    powerMonitor.on('lock-screen', () => {
+      voice.stop();
+      context.stop();
+    });
     ipcMain.handle(CONTEXT_CHANNELS.get, (event) => {
       assertTrusted(event);
       return context.get();
@@ -329,11 +364,80 @@ void app
           mainWindow.webContents.send(SENSOR_CHANNELS.update, snapshot);
       },
     );
-    // Native camera startup is a named user action. Renderer media remains denied.
+    // Renderer microphone access is leased only to the trusted frame after an explicit voice start.
+    // Camera, screen capture, other frames, and all other permissions remain denied.
     session.defaultSession.setPermissionRequestHandler(
-      (_contents, _permission, callback) => callback(false),
+      (contents, permission, callback, details) => {
+        const media = details as Electron.MediaAccessPermissionRequest;
+        callback(
+          Boolean(
+            mainWindow &&
+            contents === mainWindow.webContents &&
+            permission === 'media' &&
+            voice.captureAllowed() &&
+            details.isMainFrame &&
+            media.mediaTypes?.length === 1 &&
+            media.mediaTypes[0] === 'audio',
+          ),
+        );
+      },
     );
-    session.defaultSession.setPermissionCheckHandler(() => false);
+    session.defaultSession.setPermissionCheckHandler(
+      (contents, permission, _origin, details) =>
+        Boolean(
+          mainWindow &&
+          contents === mainWindow.webContents &&
+          permission === 'media' &&
+          voice.captureAllowed() &&
+          details.isMainFrame &&
+          details.mediaType === 'audio',
+        ),
+    );
+    ipcMain.handle(VOICE_CHANNELS.get, (event) => {
+      assertTrusted(event);
+      return voice.get();
+    });
+    ipcMain.handle(VOICE_CHANNELS.start, async (event, input: unknown) => {
+      assertTrusted(event);
+      if (managingData) throw new Error('Data action in progress');
+      const started = await voice.start({
+        ...voiceOptionsSchema.parse(input),
+        current: currentState(),
+      });
+      if (started.phase !== 'listening' || !started.sessionId || started.issue)
+        return started;
+      const fakeMicrophone =
+        started.provider === 'mock' &&
+        app.commandLine.hasSwitch('use-fake-device-for-media-stream');
+      if (process.platform === 'darwin' && !fakeMicrophone) {
+        const status = systemPreferences.getMediaAccessStatus('microphone');
+        if (
+          status === 'denied' ||
+          status === 'restricted' ||
+          (status !== 'granted' &&
+            !(await systemPreferences.askForMediaAccess('microphone')))
+        ) {
+          if (voice.get().sessionId === started.sessionId)
+            voice.stop('permission_denied');
+          return voice.get();
+        }
+      }
+      voice.armCapture(started.sessionId);
+      return voice.get();
+    });
+    ipcMain.handle(VOICE_CHANNELS.stop, (event) => {
+      assertTrusted(event);
+      voice.stop();
+    });
+    ipcMain.handle(VOICE_CHANNELS.audio, (event, input: unknown) => {
+      assertTrusted(event);
+      return voice.audio(voiceAudioSchema.parse(input));
+    });
+    ipcMain.handle(VOICE_CHANNELS.finish, (event, id: unknown) => {
+      assertTrusted(event);
+      if (typeof id !== 'string') throw new Error('Invalid voice session');
+      voice.finish(id);
+    });
     ipcMain.handle(STATUS_CHANNEL, (event) => {
       assertTrusted(event);
       return getDesktopStatus(
@@ -360,24 +464,15 @@ void app
     ipcMain.handle(REASONING_CHANNELS.ask, (event, input: unknown) => {
       assertTrusted(event);
       if (managingData) throw new Error('Data action in progress');
-      const query = askQuerySchema.parse(input),
-        sensed = sensor.get(),
-        desktop = context.get();
+      voice.stop();
       return reasoning.ask({
-        ...query,
-        current: {
-          sensor: sensed.phase,
-          reading: sensed.reading,
-          context: desktop.phase,
-          contextSource: desktop.provider === 'mock' ? 'mock' : 'live',
-          application: desktop.application?.name ?? null,
-          activity,
-          saving: storageStatus().enabled,
-        },
+        ...askQuerySchema.parse(input),
+        current: currentState(),
       });
     });
     ipcMain.handle(REASONING_CHANNELS.cancel, (event) => {
       assertTrusted(event);
+      voice.stop();
       reasoning.cancel();
     });
     ipcMain.handle(BASELINE_CHANNEL, (event, input: unknown) => {
@@ -475,6 +570,7 @@ void app
           cancelId: 0,
         });
         if (confirmation.response !== 1) return 'cancelled';
+        voice.stop();
         reasoning.cancel();
         await sensor.stop();
         context.stop();
@@ -509,6 +605,7 @@ app.on('window-all-closed', () => {
 
 let quitting = false;
 app.on('before-quit', (event) => {
+  voice.stop();
   reasoning.cancel();
   if (quitting || !sensor) return;
   event.preventDefault();

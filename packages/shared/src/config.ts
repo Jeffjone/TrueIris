@@ -51,8 +51,19 @@ const envSchema = z.object({
     .default('local'),
   PRESAGE_API_KEY: optionalSecret,
   GEMINI_API_KEY: optionalSecret,
+  TRUEIRIS_VOICE_PROVIDER: z.enum(['elevenlabs', 'mock']).default('elevenlabs'),
+  ELEVENLABS_TTS_MODEL: z
+    .string()
+    .regex(/^eleven_[a-z0-9_]{1,70}$/)
+    .default('eleven_flash_v2_5'),
   ELEVENLABS_API_KEY: optionalSecret,
-  ELEVENLABS_VOICE_ID: optionalSecret,
+  ELEVENLABS_VOICE_ID: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z
+      .string()
+      .regex(/^[a-zA-Z0-9_-]{1,100}$/)
+      .optional(),
+  ),
   TRUEIRIS_INGEST_TOKEN: z.preprocess(
     (value) => (value === '' ? undefined : value),
     z.string().min(32).max(256).optional(),

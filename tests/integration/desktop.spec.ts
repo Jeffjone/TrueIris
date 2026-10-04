@@ -21,6 +21,8 @@ for (const connected of [true, false]) {
         TRUEIRIS_DEMO_MODE: 'false',
         LOG_LEVEL: 'silent',
         PRESAGE_API_KEY: '',
+        ELEVENLABS_API_KEY: '',
+        ELEVENLABS_VOICE_ID: '',
         TRUEIRIS_INGEST_TOKEN: '',
         DATABASE_URL: '',
         TRUEIRIS_SENSOR_PROVIDER: 'presage',
@@ -44,6 +46,12 @@ for (const connected of [true, false]) {
       }));
       expect(isolation).toEqual({
         bridgeKeys: [
+          'getVoice',
+          'startVoice',
+          'stopVoice',
+          'sendVoiceAudio',
+          'finishVoice',
+          'onVoice',
           'askIris',
           'cancelIris',
           'getStatus',

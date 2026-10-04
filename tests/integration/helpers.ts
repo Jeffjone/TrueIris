@@ -9,13 +9,17 @@ delete environment.ELECTRON_RUN_AS_NODE;
 export async function launchSensorDesktop(
   scenario = 'steady',
   overrides: Record<string, string> = {},
+  flags: string[] = [],
 ) {
   const app = await electron.launch({
     executablePath: require('electron') as string,
-    args: [resolve('apps/desktop')],
+    args: [resolve('apps/desktop'), ...flags],
     env: {
       ...environment,
       GEMINI_API_KEY: '',
+      ELEVENLABS_API_KEY: '',
+      ELEVENLABS_VOICE_ID: '',
+      TRUEIRIS_VOICE_PROVIDER: 'elevenlabs',
       PRESAGE_API_KEY: '',
       TRUEIRIS_INGEST_TOKEN: '',
       DATABASE_URL: '',
