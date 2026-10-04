@@ -14,6 +14,8 @@ import {
 import { insertContext, exportContext, ContextConflict } from './context';
 export { ContextConflict } from './context';
 import type { ContextInterval } from '@trueiris/schemas';
+import { queryBaselines } from './baseline';
+import type { BaselineQuery, BaselineData } from '@trueiris/schemas';
 import { queryTimeline } from './timeline';
 export { migrate } from './migration';
 
@@ -100,6 +102,7 @@ const selectMeasurements = `SELECT m.*, s.started_at FROM measurements m JOIN se
 
 export interface MeasurementStore {
   health(): Promise<boolean>;
+  baselines(userId: string, query: BaselineQuery): Promise<BaselineData>;
   timeline(userId: string, query: TimelineQuery): Promise<TimelineData>;
   ingest(userId: string, measurements: Measurement[]): Promise<IngestionAck>;
   exportPage(
@@ -257,6 +260,9 @@ export class TigerStore implements MeasurementStore {
       }
       return { accepted, duplicates: measurements.length - accepted };
     });
+  }
+  async baselines(userId: string, query: BaselineQuery) {
+    return queryBaselines(this.pool, userId, query);
   }
   async timeline(userId: string, query: TimelineQuery) {
     return queryTimeline(this.pool, userId, query);

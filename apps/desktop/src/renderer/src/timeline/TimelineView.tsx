@@ -13,6 +13,7 @@ import {
   timeLabel,
 } from './presentation';
 import { TimelineChart, type Selection } from './TimelineChart';
+import { BaselinePanel } from './BaselinePanel';
 import { useTimeline } from './useTimeline';
 
 function Notice({ result }: { result: TimelineResult | null }) {
@@ -452,6 +453,13 @@ function TimelineDay({
               </p>
             )}
           </section>
+          {selectedQuery && (
+            <BaselinePanel
+              key={`${revision}:${JSON.stringify(selectedQuery)}`}
+              range={selectedQuery}
+              zone={zone}
+            />
+          )}
         </>
       )}
     </>

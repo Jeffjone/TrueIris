@@ -2,6 +2,8 @@ import Fastify, { LogController } from 'fastify';
 import { timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import {
+  baselineQuerySchema,
+  baselineDataSchema,
   healthSchema,
   measurementBatchSchema,
   exportPageSchema,
@@ -131,6 +133,18 @@ export function buildApp(logLevel = 'info', options: ApiOptions = {}) {
         );
       } catch {
         return reply.code(503).send({ error: 'Context export is unavailable' });
+      }
+    });
+    privateApp.post('/baselines/compare', async (request, reply) => {
+      const query = baselineQuerySchema.safeParse(request.body);
+      if (!query.success)
+        return reply.code(400).send({ error: 'Invalid baseline request' });
+      try {
+        return baselineDataSchema.parse(
+          await store!.baselines(userId!, query.data),
+        );
+      } catch {
+        return reply.code(503).send({ error: 'Baselines are unavailable' });
       }
     });
     privateApp.get('/timeline', async (request, reply) => {

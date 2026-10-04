@@ -4,6 +4,7 @@ import {
   STATUS_CHANNEL,
   SENSOR_CHANNELS,
   STORAGE_CHANNELS,
+  BASELINE_CHANNEL,
   TIMELINE_CHANNEL,
   ACTIVITY_CHANNEL,
   type DesktopBridge,
@@ -18,6 +19,8 @@ import {
   exportResultSchema,
   deleteResultSchema,
   activitySchema,
+  baselineQuerySchema,
+  baselineResultSchema,
   timelineQuerySchema,
   timelineResultSchema,
 } from '@trueiris/schemas';
@@ -38,6 +41,13 @@ const bridge: DesktopBridge = {
     exportResultSchema.parse(await ipcRenderer.invoke(STORAGE_CHANNELS.export)),
   deleteData: async () =>
     deleteResultSchema.parse(await ipcRenderer.invoke(STORAGE_CHANNELS.delete)),
+  getBaselines: async (query) =>
+    baselineResultSchema.parse(
+      await ipcRenderer.invoke(
+        BASELINE_CHANNEL,
+        baselineQuerySchema.parse(query),
+      ),
+    ),
   getTimeline: async (query) =>
     timelineResultSchema.parse(
       await ipcRenderer.invoke(

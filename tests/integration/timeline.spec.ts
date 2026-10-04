@@ -1,3 +1,4 @@
+import { compareAgainstBaseline } from '../../packages/analytics/src';
 import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import type { MeasurementStore } from '../../packages/db/src/index';
@@ -114,6 +115,32 @@ test('built timeline separates sources, selects points and periods, zooms, shows
   const requests: TimelineQuery[] = [];
   const fixtureNow = Date.now();
   const store: MeasurementStore = {
+    baselines: async (_user, query) => ({
+      query,
+      historyStart: new Date(
+        Date.parse(query.range.start) - query.lookbackDays * 86400_000,
+      ).toISOString(),
+      historyEnd: query.range.start,
+      comparisons: (['pulse', 'respiration', 'hrv'] as const).map((metric) =>
+        compareAgainstBaseline(
+          metric,
+          81,
+          15,
+          {
+            sampleCount: query.context.kind === 'activity' ? 21 : 0,
+            dayCount: 3,
+            mean: 72,
+            variance: 4,
+            measurementConfidence: 0.9,
+          },
+          query.context,
+        ),
+      ) as [
+        ReturnType<typeof compareAgainstBaseline>,
+        ReturnType<typeof compareAgainstBaseline>,
+        ReturnType<typeof compareAgainstBaseline>,
+      ],
+    }),
     health: async () => true,
     ingestContext: async () => ({ accepted: 0, duplicates: 0 }),
     exportContextPage: async () => ({ intervals: [], next: null }),
@@ -179,6 +206,25 @@ test('built timeline separates sources, selects points and periods, zooms, shows
     await expect(
       details.getByText('30 saved readings', { exact: false }),
     ).toBeVisible();
+    const baselines = page.getByRole('region', { name: 'Personal baselines' });
+    await baselines.getByRole('button', { name: 'Compare baseline' }).click();
+    await expect(
+      baselines.getByText('21 historical samples · 3 local dates'),
+    ).toHaveCount(3);
+    await expect(
+      baselines.getByText('+9.0 bpm from baseline (+12.5%)'),
+    ).toBeVisible();
+    await baselines
+      .getByLabel('Baseline context')
+      .selectOption('time_of_day:morning');
+    await expect(
+      baselines.getByText('21 historical samples · 3 local dates'),
+    ).toHaveCount(0);
+    await baselines.getByRole('button', { name: 'Compare baseline' }).click();
+    await expect(
+      baselines.getByText('Insufficient history for this metric and context.'),
+    ).toHaveCount(3);
+    await chart.focus();
     await page.keyboard.press('ArrowRight');
     await page.keyboard.press('Enter');
     await expect(details.getByText('Break', { exact: true })).toBeVisible();

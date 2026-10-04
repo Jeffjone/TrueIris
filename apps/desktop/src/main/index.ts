@@ -16,6 +16,7 @@ import {
   STATUS_CHANNEL,
   SENSOR_CHANNELS,
   STORAGE_CHANNELS,
+  BASELINE_CHANNEL,
   TIMELINE_CHANNEL,
   ACTIVITY_CHANNEL,
 } from '@trueiris/shared';
@@ -28,6 +29,7 @@ import { getDesktopStatus } from './status';
 import {
   contextOptionsSchema,
   activitySchema,
+  baselineQuerySchema,
   timelineQuerySchema,
   type RecordedActivity,
   sensorStartSchema,
@@ -40,6 +42,7 @@ import {
   storageConfigured,
 } from './storage/queue';
 import { exportMeasurements } from './storage/files';
+import { getBaselines } from './baseline';
 import { getTimeline } from './timeline';
 import { ContextController } from './context/controller';
 import { NativeContextProvider, MockContextProvider } from './context/provider';
@@ -343,6 +346,14 @@ void app
     ipcMain.handle(SENSOR_CHANNELS.stop, (event) => {
       assertTrusted(event);
       return sensor.stop();
+    });
+    ipcMain.handle(BASELINE_CHANNEL, (event, input: unknown) => {
+      assertTrusted(event);
+      return getBaselines(
+        env.TRUEIRIS_API_URL,
+        env.TRUEIRIS_INGEST_TOKEN,
+        baselineQuerySchema.parse(input),
+      );
     });
     ipcMain.handle(TIMELINE_CHANNEL, (event, input: unknown) => {
       assertTrusted(event);

@@ -59,3 +59,7 @@ Today shows saved activity periods, pulse/respiration/HRV trends, recorded manua
 ## Feature 6 verification
 
 Desktop context adds explicit independent capture, foreground application/switch/idle/session state, opt-in titles, manual override and focus state. Conservative rules return activity/confidence/reason; unknown apps are low confidence and missing observations remain gaps. Immutable intervals are consent-scoped and persisted through the existing private pipeline. Timeline, context export and full-history deletion expose the evidence and controls. Validation includes classifier/lifecycle/contracts/API/queue tests, built mock desktop controls and context-only history, real scoped Timescale ownership/overlap/retry/pagination/clipping/deletion checks, and built desktop → Tiger Data → context overlay verification. Built native app detection and lock cleanup are verified on macOS; Windows/X11 native smoke checks remain platform-specific. See [desktop context](DESKTOP_CONTEXT.md).
+
+## Feature 8 verification
+
+Activity and local time-of-day baselines use earlier quality-filtered history with explicit sample/date support. Timeline selected periods expose comparisons and insufficient-history/no-current-data states through a private named bridge and scoped authenticated API. Arithmetic/contracts/API, built desktop and isolated real Timescale checks cover the feature. See [personal baselines](PERSONAL_BASELINES.md). Feature 7 screen capture remains unimplemented and off.

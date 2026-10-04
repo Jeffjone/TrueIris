@@ -37,3 +37,4 @@ export * from './storage';
 export * from './timeline';
 
 export * from './context';
+export * from './baseline';

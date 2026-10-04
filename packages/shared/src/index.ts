@@ -1,4 +1,6 @@
 import type {
+  BaselineQuery,
+  BaselineResult,
   ContextOptions,
   ContextSnapshot,
   DesktopStatus,
@@ -35,6 +37,7 @@ export const CONTEXT_CHANNELS = {
   update: 'trueiris:context:update',
 } as const;
 
+export const BASELINE_CHANNEL = 'trueiris:baselines:get';
 export const TIMELINE_CHANNEL = 'trueiris:timeline:get';
 export const ACTIVITY_CHANNEL = 'trueiris:activity:set';
 
@@ -45,6 +48,7 @@ export interface DesktopBridge {
   setStorageEnabled(enabled: boolean): Promise<StorageStatus>;
   exportData(): Promise<'saved' | 'cancelled' | 'failed'>;
   deleteData(): Promise<'deleted' | 'cancelled' | 'failed'>;
+  getBaselines(query: BaselineQuery): Promise<BaselineResult>;
   getTimeline(query: TimelineQuery): Promise<TimelineResult>;
   setActivity(
     activity: RecordedActivity | null,

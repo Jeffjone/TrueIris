@@ -54,3 +54,7 @@ The repository queries parameterized SQL in one read-only repeatable-read transa
 The **Desktop** row shows independent context intervals on the same axis as physiology, with source/owner/time scope and missing observations preserved. Changes in application, activity, optional title, idle and focus are marked; periodic 30-second chunk boundaries are not changes. Context-only periods display the chart with empty physiological metrics. Selected-period details show app, optional title, confidence/reason, manual selection and idle/focus/session/switch metadata, clipped to the requested bounds.
 
 Migration 3 adds separate context sessions and intervals. Timeline reads at most 3,000 intervals in its existing repeatable-read transaction and sets `limited` when details exceed the cap. Independent context sessions never inflate sensing-session counts or relabel measurements. Captured context and physiology correlate through owner, selected source and time overlap. The native provider records `live`; test context remains `mock`. See [desktop context](DESKTOP_CONTEXT.md).
+
+## Personal comparison (Feature 8)
+
+Select a point or period to reveal **Compare with your history**. Choose an activity or local time of day and click **Compare baseline**. References use only earlier history of the selected source, with explicit sample/date counts and insufficient-history states. Changing selections/context or refreshing history clears previous comparisons. See [personal baselines](PERSONAL_BASELINES.md).

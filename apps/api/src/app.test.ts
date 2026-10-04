@@ -47,6 +47,7 @@ const measurement = {
 };
 function fakeStore(): MeasurementStore {
   return {
+    baselines: vi.fn(),
     timeline: vi.fn(),
     ingestContext: vi.fn(async () => ({ accepted: 1, duplicates: 0 })),
     exportContextPage: vi.fn(async () => ({ intervals: [], next: null })),
@@ -462,4 +463,81 @@ describe('private desktop context routes', () => {
       await app.close();
     }
   });
+});
+
+import { compareAgainstBaseline } from '../../../packages/analytics/src';
+it('authenticates, scopes and strictly bounds baseline comparisons', async () => {
+  const store = fakeStore();
+  const query = {
+    range: {
+      start: '2026-03-10T14:00:00.000Z',
+      end: '2026-03-10T14:01:00.000Z',
+      source: 'mock' as const,
+    },
+    context: { kind: 'activity' as const, activity: 'Coding' as const },
+    timezone: 'UTC',
+    lookbackDays: 30,
+  };
+  const comparisons = (['pulse', 'respiration', 'hrv'] as const).map((m) =>
+    compareAgainstBaseline(
+      m,
+      null,
+      0,
+      {
+        sampleCount: 0,
+        dayCount: 0,
+        mean: null,
+        variance: null,
+        measurementConfidence: null,
+      },
+      query.context,
+    ),
+  );
+  vi.mocked(store.baselines).mockResolvedValue({
+    query,
+    historyStart: '2026-02-08T14:00:00.000Z',
+    historyEnd: query.range.start,
+    comparisons: comparisons as [
+      (typeof comparisons)[number],
+      (typeof comparisons)[number],
+      (typeof comparisons)[number],
+    ],
+  });
+  const app = buildApp('silent', { store, token, userId });
+  try {
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/baselines/compare',
+          payload: query,
+        })
+      ).statusCode,
+    ).toBe(401);
+    const request = (payload: unknown) =>
+      app.inject({
+        method: 'POST',
+        url: '/baselines/compare',
+        headers: {
+          authorization: `Bearer ${token}`,
+          'content-type': 'application/json',
+        },
+        payload: JSON.stringify(payload),
+      });
+    for (const patch of [
+      { userId: 'forged' },
+      { lookbackDays: 31 },
+      { timezone: 'invalid' },
+    ])
+      expect((await request({ ...query, ...patch })).statusCode).toBe(400);
+    expect(store.baselines).not.toHaveBeenCalled();
+    expect((await request(query)).statusCode).toBe(200);
+    expect(store.baselines).toHaveBeenCalledWith(userId, query);
+    vi.mocked(store.baselines).mockRejectedValue(new Error('private SQL'));
+    const failed = await request(query);
+    expect(failed.statusCode).toBe(503);
+    expect(failed.body).not.toContain('private SQL');
+  } finally {
+    await app.close();
+  }
 });

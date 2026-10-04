@@ -45,7 +45,7 @@ flowchart TD
   ANSWER --> TTS[ElevenLabs streaming TTS]
 ```
 
-Sensor events, opt-in authenticated persistence and pure 30-second epoch analytics are implemented. The Today timeline and optional recorded manual activity are implemented. Opt-in OS context and interval history are implemented in Feature 6. Baselines, memory, agent and voice remain planned.
+Sensor events, opt-in authenticated persistence and pure 30-second epoch analytics are implemented. The Today timeline and optional recorded manual activity are implemented. Opt-in OS context and interval history are implemented in Feature 6. Personal activity/time-of-day baselines are implemented in Feature 8; memory, agent and voice remain planned.
 
 ## Workspace ownership
 
@@ -157,3 +157,7 @@ A named validated history IPC capability connects the renderer timeline to priva
 Desktop context runs independently in an isolated utility process and is off on launch. Main owns its lifecycle, app/switch/idle/session state, title/focus opt-ins and manual activity override. Capture stops on lock, sleep, reload, renderer crash, close and quit. The classifier is pure and conservative; missing app evidence stays absent. No DOM or screen content is read.
 
 Migration 3 adds context sessions and immutable intervals with owner/source/origin checks and 30-second maximum bounds. The authenticated API supplies owner identity, rejects overlap/changed payloads, and shares the ingestion/deletion transaction lock and replay watermark. A bounded in-memory context queue reuses measurement transport without converting context into sensor readings. Timeline returns separately clipped context in its read snapshot, including context-only periods. Temporal owner/source/overlap connects context to physiology; scalar epoch context IDs remain nullable rather than flattening multiple contexts. Export and delete cover both histories. See [desktop context](DESKTOP_CONTEXT.md) for permissions, platform coverage and verification.
+
+## Feature 8 personal baselines
+
+A named validated desktop capability and authenticated scoped comparison endpoint query raw history for contextual personal references. Quality-filtered 30-second per-session bucket means need sufficient samples across multiple local dates; current periods are excluded from historical evidence. Pure analytics calculate signed differences, percentages, standardized deviation and an explicit evidence-support heuristic. Results are transient, source separated, timezone aware and do not interpret physiological values medically. No new table or capture is added. See [personal baselines](PERSONAL_BASELINES.md) for method, contracts and validation.

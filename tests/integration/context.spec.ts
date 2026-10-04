@@ -13,6 +13,9 @@ test('desktop context has independent consent, optional titles, manual override,
   test.setTimeout(60_000);
   const intervals = new Map<string, ContextInterval>();
   const store: MeasurementStore = {
+    baselines: async () => {
+      throw new Error('Unavailable');
+    },
     health: async () => true,
     ingest: async () => ({ accepted: 0, duplicates: 0 }),
     exportPage: async () => ({ measurements: [], next: null }),

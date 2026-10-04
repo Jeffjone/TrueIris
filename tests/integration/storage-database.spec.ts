@@ -1,3 +1,4 @@
+import type { Measurement } from '../../packages/schemas/src';
 import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import {
@@ -13,7 +14,7 @@ test('built desktop saves labeled mock measurements and epochs through the real 
     process.env.TRUEIRIS_TEST_DATABASE !== 'true',
     'Run pnpm test:persistence with a configured Timescale database.',
   );
-  test.setTimeout(60_000);
+  test.setTimeout(90_000);
   loadWorkspaceEnvironment();
   const env = parseEnvironment(process.env);
   if (!env.DATABASE_URL)
@@ -143,6 +144,42 @@ test('built desktop saves labeled mock measurements and epochs through the real 
     expect(timeline.summary.count).toBe(rows.measurements.length);
     expect(timeline.activities.every((p) => p.activity === 'Coding')).toBe(
       true,
+    );
+    const baselines = page.getByRole('region', { name: 'Personal baselines' });
+    await baselines.getByRole('button', { name: 'Compare baseline' }).click();
+    await expect(
+      baselines.getByText('Insufficient history for this metric and context.'),
+    ).toHaveCount(3);
+    // Add earlier history only for this random fixture owner, after verifying today's export/timeline.
+    for (let day = 1; day <= 3; day++) {
+      const base = Math.floor(Date.now() / 30_000) * 30_000 - day * 86400_000;
+      const sessionId = randomUUID();
+      const history: Measurement[] = Array.from({ length: 105 }, (_, i) => ({
+        eventId: randomUUID(),
+        sessionId,
+        startedAt: new Date(base).toISOString(),
+        timestamp: new Date(
+          base + (Math.floor(i / 15) * 30 + (i % 15)) * 1000,
+        ).toISOString(),
+        source: 'mock',
+        activity: 'Coding',
+        signalQuality: 'good',
+        pulseRate: 72,
+        pulseConfidence: 0.9,
+        respirationRate: 12,
+        respirationConfidence: 0.9,
+        hrvRmssd: 30,
+        hrvConfidence: 0.9,
+      }));
+      await store.ingest(userId, history);
+    }
+    await baselines.getByRole('button', { name: 'Compare baseline' }).click();
+    await expect(
+      baselines.getByText('21 historical samples · 3 local dates'),
+    ).toHaveCount(3);
+    await expect(baselines.getByText('72.0 bpm baseline')).toBeVisible();
+    await expect(baselines.getByText('Current', { exact: false })).toHaveCount(
+      3,
     );
   } finally {
     await app.close();

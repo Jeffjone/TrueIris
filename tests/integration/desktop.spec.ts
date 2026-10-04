@@ -49,6 +49,7 @@ for (const connected of [true, false]) {
           'setStorageEnabled',
           'exportData',
           'deleteData',
+          'getBaselines',
           'getTimeline',
           'setActivity',
           'getContext',

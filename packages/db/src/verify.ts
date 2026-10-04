@@ -5,6 +5,7 @@ import {
   parseEnvironment,
 } from '@trueiris/shared/config';
 import type { Measurement } from '@trueiris/schemas';
+import { verifyBaselines } from './verify-baseline';
 import { verifyContext } from './verify-context';
 import { migrate, SessionConflict, TigerStore } from './index';
 
@@ -36,6 +37,7 @@ try {
   await migrate(store.pool);
   await migrate(store.pool);
   assert.equal(await store.health(), true);
+  await verifyBaselines(store);
   const m = [measurement(0), measurement(1), measurement(2)];
   assert.deepEqual(await store.ingest(users[0]!, m), {
     accepted: 3,
@@ -250,13 +252,15 @@ try {
   await assert.rejects(store.ingest(users[0]!, m), SessionConflict);
   assert.equal((await store.exportPage(users[1]!)).measurements.length, 1);
   console.log(
-    'Timescale verification passed: migrations, hypertable, batching, idempotency, concurrent epochs, rollback, ownership, pagination, timeline ranges/quality/activity/gaps/source isolation/display caps, context consent payloads/provenance/immutable IDs/overlap/concurrency/pagination/scoping/clipping/display caps, deletion and replay protection.',
+    'Timescale verification passed: migrations, hypertable, batching, idempotency, concurrent epochs, rollback, ownership, pagination, timeline ranges/quality/activity/gaps/source isolation/display caps, personal baselines/sample support/quality/context/timezone/DST/source and owner separation, context consent payloads/provenance/immutable IDs/overlap/concurrency/pagination/scoping/clipping/display caps, deletion and replay protection.',
   );
 } catch (error) {
   const code = (error as { code?: unknown }).code;
   const location =
     error instanceof Error
-      ? error.stack?.match(/(?:verify(?:-context)?|timeline)\.ts:\d+:\d+/)?.[0]
+      ? error.stack?.match(
+          /(?:verify(?:-context|-baseline)?|timeline|baseline)\.ts:\d+:\d+/,
+        )?.[0]
       : undefined;
   if (typeof code === 'string' && /^[A-Z0-9_]{5,32}$/.test(code))
     console.error(`Verification error code: ${code}`);
