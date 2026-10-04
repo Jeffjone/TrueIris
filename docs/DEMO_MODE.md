@@ -19,7 +19,7 @@ The API prepares the dataset once on startup, using the real configured Tiger Da
 
 ## Walkthrough
 
-1. **Presentation** opens with four entry points and a sample-week overview. Historical samples are always labeled generated; current observations retain their actual source.
+1. **Iris home** opens with the animated blue companion and six surrounding views. Click Iris to talk; optional activity recording has its own mode. **Explore your sample week** opens the historical overview. Historical samples are always labeled generated; current observations retain their actual source.
 2. **Live** offers **Start live signal** and independent **Start desktop context**. The camera and app/idle observations require explicit actions; titles, microphone capture and automatic observation saving remain off by default. Stop and actual capture/saving status stay visible across routes.
 3. **Timeline** defaults to `demo_seed` and UTC. Choose a sample day from the week overview or date control, inspect ranges, compare with earlier coding/time-of-day baselines and reconstruct events. The dataset is generated, even when current camera readings are genuine.
 4. **Ask Iris** defaults to sample history and UTC, with three predictable example questions: last thirty minutes, today's coding/baseline comparison and sample coding episode summaries. The normal Gemini evidence/citation pipeline runs, and spoken questions reuse ElevenLabs. Start voice explicitly. History facts and the view disclose generated evidence; sample summary retrieval is keyword-based, not semantic embeddings.

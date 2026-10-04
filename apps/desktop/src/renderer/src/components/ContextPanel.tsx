@@ -67,8 +67,10 @@ export function useContext() {
             : await window.trueiris!.stopContext();
       version.current++;
       setSnapshot(result);
+      return result;
     } catch {
       setError('Desktop context could not be updated. Please retry.');
+      return null;
     } finally {
       setBusy(false);
     }

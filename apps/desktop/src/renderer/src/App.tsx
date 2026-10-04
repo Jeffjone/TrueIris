@@ -1,3 +1,5 @@
+import { IrisHome } from './iris/IrisHome';
+import { BlobNavigation } from './iris/BlobNavigation';
 import {
   DemoBanner,
   DemoDiagnostics,
@@ -26,19 +28,14 @@ import {
   type ContextControls,
 } from './components/ContextPanel';
 import { SensorPanel } from './components/SensorPanel';
-import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
+import {
+  Navigate,
+  NavLink,
+  Route,
+  Routes,
+  useLocation,
+} from 'react-router-dom';
 import type { DesktopStatus } from '@trueiris/schemas';
-
-const pages = [
-  'Live',
-  'Timeline',
-  'Patterns',
-  'Ask Iris',
-  'Experiments',
-  'Settings',
-] as const;
-const routeFor = (page: string) =>
-  `/${page.toLowerCase().replaceAll(' ', '-')}`;
 
 function useStatus() {
   const [status, setStatus] = useState<DesktopStatus | null>(null);
@@ -187,6 +184,7 @@ function Settings({
 
 export function App() {
   const { status, checked } = useStatus();
+  const home = useLocation().pathname === '/';
   const demoMode = status?.demoMode === true;
   const demo = useDemo(demoMode);
   const data = demo.result?.state === 'ready' ? demo.result.data : null;
@@ -210,99 +208,60 @@ export function App() {
   }
   return (
     <div className="app-shell">
-      <aside className="sidebar">
-        <NavLink
-          to={demoMode ? '/demo' : '/live'}
-          className="brand"
-          aria-label="TrueIris home"
-        >
+      <header className="app-header">
+        <NavLink to="/" className="brand" aria-label="TrueIris home">
           <span className="brand-symbol" aria-hidden="true">
-            ◉
-          </span>{' '}
+            ✳
+          </span>
           trueiris<span className="brand-dot">.</span>
         </NavLink>
-        <p className="brand-subtitle">A clearer view of you.</p>
-        <nav aria-label="Main navigation">
-          {demoMode && <NavLink to="/demo">Presentation</NavLink>}
-          {pages.map((page, index) => (
-            <NavLink key={page} to={routeFor(page)}>
-              <span className="nav-index" aria-hidden="true">
-                0{index + 1}
-              </span>
-              {page}
+        {home ? (
+          <span className="header-note">a little more in tune with you</span>
+        ) : (
+          <>
+            <NavLink className="back-to-iris" to="/">
+              ← Back to Iris
             </NavLink>
-          ))}
-        </nav>
-        <div className="sidebar-footer">
-          {!demoMode && (
-            <>
-              <span
-                className={`status-dot ${status?.api === 'connected' ? 'connected' : ''}`}
-              />
-              <span role="status">
-                {!checked
-                  ? 'Checking connection'
-                  : status?.api === 'connected'
-                    ? 'API connected'
-                    : 'API unavailable'}
-              </span>
-              <div
-                className="global-storage"
-                data-testid="global-storage-status"
-              >
-                {storageLabel(storage.status)}
-              </div>
-            </>
-          )}
-          {demoMode && (
-            <div className="global-storage" data-testid="global-storage-status">
-              {storage.status?.enabled
-                ? 'Saving current observations'
-                : 'Saving off'}
-            </div>
-          )}
-          <div className="global-sensor global-context">
-            <span data-testid="global-context-status">
-              {contextLabel(context.snapshot)}
-            </span>
-            {context.snapshot &&
-              ['starting', 'running'].includes(context.snapshot.phase) && (
-                <button
-                  disabled={context.busy}
-                  onClick={() => {
-                    void context.action('stop');
-                  }}
-                >
-                  Stop context
-                </button>
-              )}
-          </div>
-          <div className="global-sensor">
-            <span data-testid="global-capture-status">
-              {sensorLabel(sensor.snapshot)}
-            </span>
-            {['starting', 'running', 'stopping'].includes(
-              sensor.snapshot.phase,
-            ) && (
-              <button
-                disabled={sensor.snapshot.phase === 'stopping'}
-                onClick={() => {
-                  void sensor.stop();
-                }}
-              >
-                Stop sensor
-              </button>
-            )}
-          </div>
-        </div>
-      </aside>
-      <main className="main-content">
+            <BlobNavigation />
+          </>
+        )}
+      </header>
+      <main
+        className={`main-content ${home ? 'home-content' : 'detail-content'}`}
+      >
         {demoMode && <DemoBanner demo={demo} />}
         <Routes>
           <Route
+            path="/"
+            element={
+              checked ? (
+                <>
+                  <IrisHome
+                    key={demoMode ? 'demo' : 'normal'}
+                    demo={demoMode}
+                    context={context}
+                    storage={storage}
+                    activity={activity}
+                    onActivity={(value) => void updateActivity(value)}
+                  />
+                  {activityError && (
+                    <p role="alert">
+                      Activity could not be updated. Try selecting it again.
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="iris-loading">Getting your little space ready…</p>
+              )
+            }
+          />
+
+          <Route
             path="/demo"
             element={
-              demoMode ? (
+              !checked ? (
+                <p>Getting your sample history ready…</p>
+              ) : demoMode ? (
                 <DemoHome demo={demo} />
               ) : (
                 <Navigate to="/live" replace />
@@ -380,18 +339,70 @@ export function App() {
           <Route
             path="*"
             element={
-              checked ? (
-                <Navigate to={demoMode ? '/demo' : '/live'} replace />
-              ) : (
-                <p>Loading TrueIris…</p>
-              )
+              checked ? <Navigate to="/" replace /> : <p>Loading TrueIris…</p>
             }
           />
         </Routes>
-        <footer className="content-footer">
-          TRUEIRIS <span>Personal context intelligence</span>
-        </footer>
       </main>
+      <div className="capture-footer">
+        {!demoMode && (
+          <>
+            <span
+              className={`status-dot ${status?.api === 'connected' ? 'connected' : ''}`}
+            />
+            <span role="status" data-testid="api-status">
+              {!checked
+                ? 'Checking connection'
+                : status?.api === 'connected'
+                  ? 'API connected'
+                  : 'API unavailable'}
+            </span>
+            <div className="global-storage" data-testid="global-storage-status">
+              {storageLabel(storage.status)}
+            </div>
+          </>
+        )}
+        {demoMode && (
+          <div className="global-storage" data-testid="global-storage-status">
+            {storage.status?.enabled
+              ? 'Saving current observations'
+              : 'Saving off'}
+          </div>
+        )}
+        <div className="global-sensor global-context">
+          <span data-testid="global-context-status">
+            {contextLabel(context.snapshot)}
+          </span>
+          {context.snapshot &&
+            ['starting', 'running'].includes(context.snapshot.phase) && (
+              <button
+                disabled={context.busy}
+                onClick={() => {
+                  void context.action('stop');
+                }}
+              >
+                Stop context
+              </button>
+            )}
+        </div>
+        <div className="global-sensor">
+          <span data-testid="global-capture-status">
+            {sensorLabel(sensor.snapshot)}
+          </span>
+          {['starting', 'running', 'stopping'].includes(
+            sensor.snapshot.phase,
+          ) && (
+            <button
+              disabled={sensor.snapshot.phase === 'stopping'}
+              onClick={() => {
+                void sensor.stop();
+              }}
+            >
+              Stop sensor
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

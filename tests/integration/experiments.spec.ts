@@ -64,7 +64,9 @@ test('built experiments persist definitions and labeled sessions, distinguish re
     await expect(detail).toContainText('7 / 7 recorded sessions');
     await page.getByLabel('Session condition').selectOption('Music');
     await detail.getByRole('button', { name: 'Save session' }).click();
-    await expect(page.getByRole('status').last()).toContainText('conflicts');
+    await expect(
+      page.getByRole('status', { name: 'Experiment status' }),
+    ).toContainText('conflicts');
     await detail.getByRole('button', { name: 'Pause experiment' }).click();
     await expect(
       detail.getByRole('button', { name: 'Save session' }),
@@ -80,9 +82,9 @@ test('built experiments persist definitions and labeled sessions, distinguish re
       dialog.showSaveDialog = async () => ({ canceled: false, filePath: path });
     }, path);
     await detail.getByRole('button', { name: 'Export experiment' }).click();
-    await expect(page.getByRole('status').last()).toContainText(
-      'Experiment exported',
-    );
+    await expect(
+      page.getByRole('status', { name: 'Experiment status' }),
+    ).toContainText('Experiment exported');
     const exported = JSON.parse(await readFile(path, 'utf8'));
     expect(exported.sessions).toHaveLength(7);
     expect(exported.experiment.definition.source).toBe('mock');
@@ -132,9 +134,9 @@ test('experiments show missing configuration without starting any capture', asyn
   const { app, page } = await launchSensorDesktop();
   try {
     await page.getByRole('link', { name: 'Experiments', exact: true }).click();
-    await expect(page.getByRole('status').last()).toContainText(
-      'Connect saved history',
-    );
+    await expect(
+      page.getByRole('status', { name: 'Experiment status' }),
+    ).toContainText('Connect saved history');
     expect(
       await page.evaluate(() =>
         window.trueiris!.getVoice().then((s) => s.phase),

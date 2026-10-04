@@ -9,9 +9,14 @@ import { buildApp } from '../../apps/api/src/app';
 import { MockReasoningProvider } from '../../apps/api/src/agents/provider';
 import { launchSensorDesktop } from './helpers';
 test('explicit demo works without database or camera credentials, labels fallback, and keeps diagnostics outside presentation', async () => {
-  const { app, page } = await launchSensorDesktop('steady', {
-    TRUEIRIS_DEMO_MODE: 'true',
-  });
+  const { app, page } = await launchSensorDesktop(
+    'steady',
+    {
+      TRUEIRIS_DEMO_MODE: 'true',
+    },
+    [],
+    '/demo',
+  );
   try {
     await expect(
       page.getByRole('heading', { name: 'A moment becomes a pattern.' }),
@@ -90,11 +95,16 @@ test('built dedicated demo automatically prepares real Tiger history and present
         timeout: 25_000,
       })
       .toBe(true);
-    const desktop = await launchSensorDesktop('steady', {
-      TRUEIRIS_DEMO_MODE: 'true',
-      TRUEIRIS_API_URL: url,
-      TRUEIRIS_INGEST_TOKEN: token,
-    });
+    const desktop = await launchSensorDesktop(
+      'steady',
+      {
+        TRUEIRIS_DEMO_MODE: 'true',
+        TRUEIRIS_API_URL: url,
+        TRUEIRIS_INGEST_TOKEN: token,
+      },
+      [],
+      '/demo',
+    );
     app = desktop.app;
     const page = desktop.page;
     await expect(

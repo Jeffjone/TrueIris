@@ -1,68 +1,31 @@
-import { useEffect, useRef, useState } from 'react';
-import type { AgentResult, AskQuery } from '@trueiris/schemas';
+import { useState } from 'react';
+import { useConversation, conversationMessages } from './useConversation';
+import type { AskQuery } from '@trueiris/schemas';
 import { VoiceControls } from '../voice/VoiceControls';
 import { AgentAnswer } from './AgentAnswer';
 
 export function AskView({ demo = false }: { demo?: boolean }) {
-  const [question, setQuestion] = useState(''),
-    [source, setSource] = useState<AskQuery['source']>(
-      demo ? 'demo_seed' : 'live',
-    );
+  const [source, setSource] = useState<AskQuery['source']>(
+    demo ? 'demo_seed' : 'live',
+  );
   const [timezone, setTimezone] = useState(
     demo ? 'UTC' : Intl.DateTimeFormat().resolvedOptions().timeZone,
   );
-  const [result, setResult] = useState<AgentResult | null>(null),
-    [busy, setBusy] = useState(false);
-  const [voiceActive, setVoiceActive] = useState(false),
-    [voiceRevision, setVoiceRevision] = useState(0);
-  const generation = useRef(0);
-  useEffect(
-    () => () => {
-      generation.current++;
-      void window.trueiris?.cancelIris().catch(() => {});
-    },
-    [],
-  );
-  async function ask(command = question) {
-    if (!command.trim() || busy || voiceActive) return;
-    setQuestion(command);
-    const version = ++generation.current;
-    setResult(null);
-    setBusy(true);
-    let response: AgentResult;
-    try {
-      response = await window.trueiris!.askIris({
-        question: command,
-        source,
-        timezone,
-      });
-    } catch {
-      response = { state: 'unavailable', data: null };
-    }
-    if (version === generation.current) {
-      setResult(response);
-      setBusy(false);
-    }
-  }
-  function clear() {
-    generation.current++;
-    setResult(null);
-    setBusy(false);
-    setVoiceRevision((value) => value + 1);
-    void window.trueiris?.cancelIris().catch(() => {});
-  }
+  const {
+    question,
+    setQuestion,
+    result,
+    setResult,
+    busy,
+    voiceActive,
+    setVoiceActive,
+    voiceRevision,
+    ask,
+    clear,
+  } = useConversation(source, timezone);
   const zones = Array.from(
     new Set([timezone, 'UTC', ...Intl.supportedValuesOf('timeZone')]),
   );
-  const messages = {
-    not_configured: 'Connect Gemini and saved history in Settings to ask Iris.',
-    unauthorized:
-      'Iris access needs attention. Check the private API connection in Settings.',
-    unavailable:
-      'Iris is unavailable. Your saved history remains available in Timeline.',
-    busy: 'Iris is finishing another request. Try again shortly.',
-    cancelled: 'This request was cancelled or timed out.',
-  };
   return (
     <div className="ask-view">
       <div className="page-heading">
@@ -200,7 +163,9 @@ export function AskView({ demo = false }: { demo?: boolean }) {
           {busy
             ? 'Analyzing your question and retrieving evidence.'
             : result && !result.data
-              ? messages[result.state as keyof typeof messages]
+              ? conversationMessages[
+                  result.state as keyof typeof conversationMessages
+                ]
               : ''}
         </div>
       </section>

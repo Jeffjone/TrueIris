@@ -24,17 +24,21 @@ export function useStorage() {
       window.clearInterval(timer);
     };
   }, []);
-  const toggle = async () => {
+  const setEnabled = async (enabled: boolean) => {
     setBusy(true);
     setMessage('');
     try {
-      setStatus(await window.trueiris!.setStorageEnabled(!status?.enabled));
+      const next = await window.trueiris!.setStorageEnabled(enabled);
+      setStatus(next);
+      return next;
     } catch {
       setMessage('Saving could not be changed. Check your connection setup.');
+      return null;
     } finally {
       setBusy(false);
     }
   };
+  const toggle = () => setEnabled(!status?.enabled);
   const manage = async (action: 'export' | 'delete' | 'context') => {
     setBusy(true);
     setMessage('');
@@ -61,7 +65,7 @@ export function useStorage() {
       setBusy(false);
     }
   };
-  return { status, busy, message, toggle, manage };
+  return { status, busy, message, toggle, setEnabled, manage };
 }
 export type StorageControls = ReturnType<typeof useStorage>;
 export function storageLabel(status: StorageStatus | null) {

@@ -185,3 +185,7 @@ Migration 5 stores a `demo_seed` manifest under the dedicated demo identity. A d
 ## Feature 20 dedicated presentation
 
 The explicit demo launcher sets the mode for API and desktop. API token scope switches to the separate demo owner and a single-flight preparation service seeds once on startup; named bounded capabilities fetch/prepare its manifest. Private HTTP/WebSocket mode assertions reject mixed deployments. Presentation routes default to generated history/UTC and use evidence-linked sample artifacts; detailed health/provider controls live in Settings. Sensor lifecycle guards tear down failed real streams before any demo-only mock replacement and preserve source/session identity. No provider/database fallback is added outside the explicit mode. See [demo mode](DEMO_MODE.md).
+
+## Iris companion redesign
+
+The root route hosts a CSS-native animated companion and six symmetrical navigation blobs. A custom control slot reuses the existing voice lifecycle and user-gesture audio startup. Shared conversation state handles typed requests, cancellation and stale answers across home/Ask Iris. Optional home context recording uses existing validated context/storage capabilities with explicit saving and startup cancellation guards. Capture status remains global; source identity and backend architecture are unchanged. See [Iris interface](IRIS_INTERFACE.md).

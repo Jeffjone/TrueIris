@@ -262,7 +262,7 @@ export function ExperimentsView({ demo = false }: { demo?: boolean }) {
           personal findings.
         </p>
       )}
-      <p role="status">
+      <p role="status" aria-label="Experiment status">
         {busy ? 'Loading or saving experiment evidence…' : notice}
       </p>
       <section className="timeline-details" aria-label="Your experiments">

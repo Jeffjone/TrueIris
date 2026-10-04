@@ -6,6 +6,8 @@ The master instructions live in [TRUEIRIS_SPEC.md](TRUEIRIS_SPEC.md). The founda
 
 ## Architecture
 
+The home screen is now Iris, a baby-blue companion with animated eyes. Click her to talk, or choose **Record my activity** before clicking. Six surrounding blobs open the other views and disappear during interaction. See [Iris interface and controls](docs/IRIS_INTERFACE.md).
+
 ```mermaid
 flowchart LR
   UI[Electron / React] --> PRELOAD[Secure preload]
@@ -81,7 +83,7 @@ Keep API secrets in `.env` or runtime secret configuration. They are ignored by 
 
 `TRUEIRIS_DEMO_MODE` defaults to `false`. The dedicated launch commands enable it for API and desktop, prepare real Tiger-backed sample history automatically and show a presentation view with clear generated-data provenance. Current Presage readings stay real; only demo mode can switch to a labeled mock session after a terminal sensor failure. Capture and saving still require explicit actions. `pnpm seed:demo` / `pnpm seed:clear` target only the dedicated demo identity's `demo_seed` artifacts. See [demo mode](docs/DEMO_MODE.md) and [demo data](docs/DEMO_DATA.md).
 
-Camera sensing requires an explicit start and operating-system permission. Its status and Stop control remain visible across routes. Frames stay in the native worker. Saving starts off on each launch. Enabling it in Settings persists labeled measurements, epochs and actively captured desktop context; Stop saving, export and delete controls are available. Presage automatically uploads derived vitals summaries to its insight service; optional diagnostic telemetry is disabled. This disclosure appears before camera start. Desktop context is separately user-started, with default-off optional titles, visible Stop, and independently recorded intervals when saving is on. Screenshots remain inactive. Microphone access requires Start voice in Ask Iris and stops before reasoning/speech; audio is transient in TrueIris and sent to ElevenLabs. The API binds to loopback and requires a scoped private token for observations/timeline/export/delete. Future screen understanding requires explicit opt-in and transient image processing; all data sources retain real/mock/seed provenance. See [privacy inventory](docs/PRIVACY.md).
+Camera sensing requires an explicit start and operating-system permission. Its status and Stop control remain visible across routes. Frames stay in the native worker. Saving starts off on each launch. Enabling it in Settings persists labeled measurements, epochs and actively captured desktop context; Stop saving, export and delete controls are available. Presage automatically uploads derived vitals summaries to its insight service; optional diagnostic telemetry is disabled. This disclosure appears before camera start. Desktop context is separately user-started, with default-off optional titles, visible Stop, and independently recorded intervals when saving is on. Screenshots remain inactive. Microphone access starts when you click Iris or choose Start voice in Ask Iris, and stops before reasoning/speech; audio is transient in TrueIris and sent to ElevenLabs. The API binds to loopback and requires a scoped private token for observations/timeline/export/delete. Future screen understanding requires explicit opt-in and transient image processing; all data sources retain real/mock/seed provenance. See [privacy inventory](docs/PRIVACY.md).
 
 ## Troubleshooting
 

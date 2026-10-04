@@ -10,6 +10,7 @@ export async function launchSensorDesktop(
   scenario = 'steady',
   overrides: Record<string, string> = {},
   flags: string[] = [],
+  initialRoute = '/live',
 ) {
   const app = await electron.launch({
     executablePath: require('electron') as string,
@@ -32,5 +33,9 @@ export async function launchSensorDesktop(
       ...overrides,
     },
   });
-  return { app, page: await app.firstWindow() };
+  const page = await app.firstWindow();
+  await page.evaluate((route) => {
+    window.location.hash = `#${route}`;
+  }, initialRoute);
+  return { app, page };
 }

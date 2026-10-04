@@ -34,9 +34,9 @@ for (const connected of [true, false]) {
       const errors: string[] = [];
       page.on('pageerror', (error) => errors.push(error.message));
       await expect(
-        page.getByRole('heading', { name: 'Your state, in context.' }),
+        page.getByRole('heading', { name: 'Hi, I’m Iris' }),
       ).toBeVisible();
-      await expect(page.getByRole('status')).toHaveText(
+      await expect(page.getByTestId('api-status')).toHaveText(
         connected ? 'API connected' : 'API unavailable',
       );
       const isolation = await page.evaluate(() => ({
@@ -111,7 +111,7 @@ for (const connected of [true, false]) {
         ),
       ).toBe(true);
       expect(errors).toEqual([]);
-      const statusBounds = await page.getByRole('status').boundingBox();
+      const statusBounds = await page.getByTestId('api-status').boundingBox();
       const viewportHeight = await page.evaluate(() => window.innerHeight);
       expect(statusBounds).not.toBeNull();
       expect(

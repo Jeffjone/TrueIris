@@ -96,9 +96,7 @@ test('Ask Iris reports configuration failures without activating sensing', async
     await page.getByLabel('Your question').fill('How am I doing?');
     await page.getByRole('button', { name: 'Ask Iris', exact: true }).click();
     await expect(
-      page.getByText(
-        'Connect Gemini and saved history in Settings to ask Iris.',
-      ),
+      page.getByText('Connect Iris in Settings to ask about your history.'),
     ).toBeVisible();
     expect(
       await page.evaluate(() =>

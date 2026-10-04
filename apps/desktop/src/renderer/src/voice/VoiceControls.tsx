@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   voiceQuestion,
   type AgentResult,
@@ -23,18 +23,28 @@ const issueText: Record<VoiceIssue, string> = {
   playback_failed:
     'Speech could not play. The cited answer remains available below.',
 };
+export interface VoiceActions {
+  phase: VoiceSnapshot['phase'];
+  active: boolean;
+  disabled: boolean;
+  listen: () => Promise<void>;
+  stop: () => void;
+  finish: () => void;
+}
 export function VoiceControls({
   options,
   disabled,
   onQuestion,
   onResult,
   onActive,
+  renderControl,
 }: {
   options: VoiceOptions;
   disabled: boolean;
   onQuestion: (question: string) => void;
   onResult: (result: AgentResult | null) => void;
   onActive: (active: boolean) => void;
+  renderControl?: (actions: VoiceActions) => ReactNode;
 }) {
   const [phase, setPhase] = useState<VoiceSnapshot['phase']>('off'),
     [issue, setIssue] = useState<VoiceIssue | null>(null);
@@ -206,6 +216,12 @@ export function VoiceControls({
     }
   }
   const active = !['off', 'error'].includes(phase);
+  function finish() {
+    resources.current.microphone?.abort();
+    const id = resources.current.id;
+    if (id) void window.trueiris!.finishVoice(id);
+    setPhase('transcribing');
+  }
   const labels = {
     off: 'Microphone off',
     connecting: 'Preparing voice…',
@@ -216,41 +232,51 @@ export function VoiceControls({
     error: 'Microphone off',
   };
   return (
-    <section className="iris-voice" aria-label="Voice conversation">
-      <p className="muted">
-        Start voice to share microphone audio with ElevenLabs for transcription.
-        Your question and requested evidence go to Gemini; the cited answer goes
-        to ElevenLabs for speech. Audio stays transient in TrueIris.
-      </p>
-      <div className="timeline-toolbar">
-        <button
-          className="sensor-button"
-          type="button"
-          disabled={disabled || phase === 'connecting'}
-          onClick={() => void listen()}
-        >
-          {active ? 'Interrupt and ask' : 'Start voice'}
-        </button>
-        {phase === 'listening' && (
+    <section
+      className={`iris-voice ${renderControl ? 'iris-home-voice' : ''}`}
+      aria-label="Voice conversation"
+    >
+      {!renderControl && (
+        <p className="muted">
+          Start voice to share microphone audio with ElevenLabs for
+          transcription. Your question and requested evidence go to Gemini; the
+          cited answer goes to ElevenLabs for speech. Audio stays transient in
+          TrueIris.
+        </p>
+      )}
+      {renderControl ? (
+        // These callbacks access resources only in user events, never in rendering.
+        // eslint-disable-next-line react-hooks/refs
+        renderControl({
+          phase,
+          active,
+          disabled: disabled || phase === 'connecting',
+          listen,
+          stop,
+          finish,
+        })
+      ) : (
+        <div className="timeline-toolbar">
           <button
             className="sensor-button"
             type="button"
-            onClick={() => {
-              resources.current.microphone?.abort();
-              const id = resources.current.id;
-              if (id) void window.trueiris!.finishVoice(id);
-              setPhase('transcribing');
-            }}
+            disabled={disabled || phase === 'connecting'}
+            onClick={() => void listen()}
           >
-            Finish question
+            {active ? 'Interrupt and ask' : 'Start voice'}
           </button>
-        )}
-        {active && (
-          <button className="sensor-button" type="button" onClick={stop}>
-            Stop voice
-          </button>
-        )}
-      </div>
+          {phase === 'listening' && (
+            <button className="sensor-button" type="button" onClick={finish}>
+              Finish question
+            </button>
+          )}
+          {active && (
+            <button className="sensor-button" type="button" onClick={stop}>
+              Stop voice
+            </button>
+          )}
+        </div>
+      )}
       <p role="status" className="voice-state">
         {labels[phase]}
         {provider === 'mock' && active
