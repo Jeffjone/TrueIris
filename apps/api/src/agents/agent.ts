@@ -4,6 +4,12 @@ import {
   agentResultSchema,
   evidenceSchema,
   respondSchema,
+  recentExplanationRange,
+  timelineDataSchema,
+  type TimelineData,
+  type TimelineQuery,
+  type BaselineQuery,
+  type BaselineData,
   type AgentEvidence,
   type AgentResult,
   type AskRequest,
@@ -11,6 +17,12 @@ import {
 } from '@trueiris/schemas';
 import type { MeasurementStore } from '@trueiris/db';
 import { executeTool, toolSchemas, type ToolName } from './tools';
+import {
+  recentRetrievals,
+  missingRecentRetrievals,
+  sameRetrieval,
+  type Retrieval,
+} from './recent';
 import {
   modelContentSchema,
   type ConversationContent,
@@ -78,6 +90,7 @@ export function assembleAnswer(
       query,
       provider: provider.kind,
       asOf,
+      explanationRange: recentExplanationRange(request, asOf),
       answer:
         (incomplete ? INCOMPLETE_ANSWER_PREFIX : '') +
         selectedFacts.map((f) => f.text).join('\n\n'),
@@ -98,6 +111,53 @@ export async function runAgent(options: {
   const request = askRequestSchema.parse(options.request);
   if (!provider.configured) return { state: 'not_configured', data: null };
   const asOf = new Date((options.now ?? Date.now)()).toISOString();
+  const explanationRange = recentExplanationRange(request, asOf);
+  let recentData: TimelineData | null = null;
+  const completed: Retrieval[] = [];
+  // Share one snapshot across metrics/context and one baseline query across metrics, only for this request.
+  const timelines = new Map<string, Promise<TimelineData>>();
+  const baselines = new Map<string, Promise<BaselineData>>();
+  const scopedStore: Pick<
+    MeasurementStore,
+    'timeline' | 'baselines' | 'similarSessions'
+  > = explanationRange
+    ? {
+        timeline: (owner: string, range: TimelineQuery) => {
+          const key = JSON.stringify(range);
+          let pending = timelines.get(key);
+          if (!pending) {
+            pending = store.timeline(owner, range).then((raw) => {
+              const data = timelineDataSchema.parse(raw);
+              if (JSON.stringify(data.range) !== JSON.stringify(range))
+                throw new Error('Wrong history scope');
+              if (
+                Date.parse(range.start) ===
+                  Date.parse(explanationRange.start) &&
+                Date.parse(range.end) === Date.parse(explanationRange.end)
+              )
+                recentData = data;
+              return data;
+            });
+            timelines.set(key, pending);
+          }
+          return pending;
+        },
+        baselines: (owner: string, query: BaselineQuery) => {
+          const key = JSON.stringify(query);
+          let pending = baselines.get(key);
+          if (!pending) {
+            pending = store.baselines(owner, query);
+            baselines.set(key, pending);
+          }
+          return pending;
+        },
+        similarSessions: store.similarSessions.bind(store),
+      }
+    : store;
+  const plan = () =>
+    explanationRange
+      ? recentRetrievals(explanationRange, request.timezone, recentData)
+      : [];
   const contents: ConversationContent[] = [
     {
       role: 'user',
@@ -108,6 +168,14 @@ export async function runAgent(options: {
             source: request.source,
             timezone: request.timezone,
             asOf,
+            ...(explanationRange
+              ? {
+                  explanationRange,
+                  workflow:
+                    'Explain this exact last-30-minute window. Start with get_context and get_metrics (all three metrics). Then use the required baseline context from the response guidance and retrieve earlier historical sessions. Complete every required retrieval before respond, even when evidence is empty/unavailable. Choose a coherent concise narrative: application coverage, pulse changes versus personal baseline, breathing/HRV, then earlier activity matches. Cite coverage/unknown time and limitations. No diagnosis, causal or semantic similarity claims.',
+                  requiredRetrievals: plan(),
+                }
+              : {}),
           }),
         },
       ],
@@ -125,12 +193,77 @@ export async function runAgent(options: {
       const functions = content.parts.flatMap((p) =>
         p.functionCall ? [p.functionCall] : [],
       );
-      if (!functions.length || functions.length > 4)
-        throw new Error('Invalid tool turn');
+      if (!functions.length) throw new Error('Invalid tool turn');
+      if (functions.length > 4) {
+        // Gemini can emit a larger parallel plan despite the declared per-turn limit.
+        // Execute none of it, preserve the call/response protocol, and let the bounded loop split the plan.
+        contents.push(content, {
+          role: 'user',
+          parts: functions.map((fn) => ({
+            functionResponse: {
+              name: fn.name,
+              ...(fn.id ? { id: fn.id } : {}),
+              response: {
+                error:
+                  'At most four functions may be executed per turn. Split this plan into smaller turns.',
+                ...(explanationRange
+                  ? {
+                      requiredRetrievals: missingRecentRetrievals(
+                        plan(),
+                        completed,
+                      ).slice(0, 4),
+                    }
+                  : {}),
+              },
+            },
+          })),
+        });
+        continue;
+      }
       if (functions.some((f) => f.name === 'respond')) {
         if (functions.length !== 1)
           throw new Error('Respond must follow completed retrieval');
         const args = respondSchema.parse(functions[0]!.args);
+        const missing = missingRecentRetrievals(plan(), completed);
+        const missingNarrative =
+          explanationRange && !missing.length
+            ? (
+                [
+                  'get_context',
+                  'get_metrics',
+                  'compare_baseline',
+                  'find_similar_sessions',
+                ] as const
+              ).filter(
+                (tool) =>
+                  !evidence.some(
+                    (e) =>
+                      e.tool === tool &&
+                      (e.limitations.length > 0 ||
+                        e.facts.some((f) => args.factIds.includes(f.id))),
+                  ),
+              )
+            : [];
+        if (missing.length || missingNarrative.length) {
+          contents.push(content, {
+            role: 'user',
+            parts: [
+              {
+                functionResponse: {
+                  name: 'respond',
+                  ...(functions[0]!.id ? { id: functions[0]!.id } : {}),
+                  response: {
+                    error:
+                      'Complete required retrievals and select facts covering context, metrics, personal baselines and historical sessions before explaining this period.',
+                    requiredRetrievals: missing,
+                    missingNarrativeTools: missingNarrative,
+                  },
+                },
+              },
+            ],
+          });
+          continue;
+        }
         return assembleAnswer(request, provider, asOf, evidence, args.factIds);
       }
       contents.push(content);
@@ -151,13 +284,30 @@ export async function runAgent(options: {
               error:
                 'Invalid tool arguments. Use the declared schema and bounded ranges.',
             };
+          else if (
+            explanationRange &&
+            (!plan().some((step) =>
+              sameRetrieval(step, {
+                name,
+                args: toolSchemas[name].parse(fn.args),
+              }),
+            ) ||
+              (name === 'compare_baseline' &&
+                !completed.some((step) => step.name === 'get_context')))
+          )
+            response = {
+              error:
+                'Use the pinned explanation window and complete context before baseline comparisons.',
+              requiredRetrievals: missingRecentRetrievals(plan(), completed),
+            };
           else {
+            const parsedArgs = toolSchemas[name].parse(fn.args);
             let output: AgentEvidence;
             try {
               output = await withSignal(
                 executeTool(name, fn.args, {
                   request,
-                  store,
+                  store: scopedStore,
                   userId,
                   asOf,
                   signal,
@@ -186,7 +336,18 @@ export async function runAgent(options: {
               });
             }
             evidence.push(output);
-            response = { evidence: output };
+            completed.push({ name, args: parsedArgs });
+            response = {
+              evidence: output,
+              ...(explanationRange
+                ? {
+                    requiredRetrievals: missingRecentRetrievals(
+                      plan(),
+                      completed,
+                    ),
+                  }
+                : {}),
+            };
           }
         }
         responses.push({

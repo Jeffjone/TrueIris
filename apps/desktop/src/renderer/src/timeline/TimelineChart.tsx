@@ -17,11 +17,13 @@ export function TimelineChart({
   zone,
   selection,
   onSelect,
+  label = 'Today timeline chart',
 }: {
   data: TimelineData;
   zone: string;
   selection: Selection | null;
   onSelect: (value: Selection) => void;
+  label?: string;
 }) {
   const [drag, setDrag] = useState<{ anchor: number; current: number } | null>(
     null,
@@ -80,7 +82,7 @@ export function TimelineChart({
       viewBox={`0 0 ${width} ${HEIGHT}`}
       tabIndex={0}
       role="application"
-      aria-label="Today timeline chart"
+      aria-label={label}
       aria-describedby="timeline-instructions"
       onPointerDown={(event) => {
         if (event.button !== 0) return;
@@ -132,6 +134,9 @@ export function TimelineChart({
       <TimelineTracks data={data} zone={zone} width={width} />
       {active && (
         <rect
+          data-testid="timeline-selection"
+          data-start={active.start}
+          data-end={active.end}
           x={x(active.start)}
           y={18}
           width={Math.max(1, x(active.end) - x(active.start))}

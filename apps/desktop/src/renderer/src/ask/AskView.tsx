@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AgentResult, AskQuery } from '@trueiris/schemas';
+import { ExplanationTimeline } from './ExplanationTimeline';
 
 export function AskView() {
   const [question, setQuestion] = useState(''),
@@ -17,14 +18,19 @@ export function AskView() {
     },
     [],
   );
-  async function ask() {
-    if (!question.trim() || busy) return;
+  async function ask(command = question) {
+    if (!command.trim() || busy) return;
+    setQuestion(command);
     const version = ++generation.current;
     setResult(null);
     setBusy(true);
     let response: AgentResult;
     try {
-      response = await window.trueiris!.askIris({ question, source, timezone });
+      response = await window.trueiris!.askIris({
+        question: command,
+        source,
+        timezone,
+      });
     } catch {
       response = { state: 'unavailable', data: null };
     }
@@ -126,6 +132,14 @@ export function AskView() {
             >
               {busy ? 'Retrieving evidence…' : 'Ask Iris'}
             </button>
+            <button
+              className="sensor-button"
+              type="button"
+              disabled={busy}
+              onClick={() => void ask('Iris, explain the last 30 minutes.')}
+            >
+              Explain last 30 minutes
+            </button>
             {busy && (
               <button className="sensor-button" type="button" onClick={clear}>
                 Cancel request
@@ -170,25 +184,40 @@ export function AskView() {
               shown below.
             </p>
           )}
-          <div className="iris-narrative">
-            {result.data.selectedFacts.map((fact) => (
-              <p key={fact.id}>
-                {fact.text}{' '}
-                <a
-                  className="text-link"
-                  href={`#evidence-${fact.id.split('.')[0]}`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    document
-                      .getElementById(`evidence-${fact.id.split('.')[0]}`)
-                      ?.scrollIntoView({ block: 'nearest' });
-                  }}
-                  aria-label={`Evidence for ${fact.id}`}
-                >
-                  [{fact.id}]
-                </a>
-              </p>
-            ))}
+          <div
+            className={
+              result.data.explanationRange
+                ? 'iris-explanation-layout'
+                : undefined
+            }
+          >
+            {result.data.explanationRange && (
+              <ExplanationTimeline
+                key={`${result.data.asOf}:${result.data.query.source}`}
+                range={result.data.explanationRange}
+                timezone={result.data.query.timezone}
+              />
+            )}
+            <div className="iris-narrative">
+              {result.data.selectedFacts.map((fact) => (
+                <p key={fact.id}>
+                  {fact.text}{' '}
+                  <a
+                    className="text-link"
+                    href={`#evidence-${fact.id.split('.')[0]}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      document
+                        .getElementById(`evidence-${fact.id.split('.')[0]}`)
+                        ?.scrollIntoView({ block: 'nearest' });
+                    }}
+                    aria-label={`Evidence for ${fact.id}`}
+                  >
+                    [{fact.id}]
+                  </a>
+                </p>
+              ))}
+            </div>
           </div>
           <h3>Supporting evidence</h3>
           <div className="iris-evidence">

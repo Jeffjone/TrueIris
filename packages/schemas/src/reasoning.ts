@@ -31,6 +31,21 @@ export const askRequestSchema = askQuerySchema
   .extend({ current: currentStateSchema })
   .strict();
 export type AskRequest = z.infer<typeof askRequestSchema>;
+/** Canonical text command and its common punctuation variants share one bounded workflow. */
+export function isRecentExplanation(question: string): boolean {
+  return /^(?:iris[,:]?\s+)?explain\s+(?:the\s+)?last\s+30\s+minutes[.!?]?$/i.test(
+    question.trim(),
+  );
+}
+export function recentExplanationRange(query: AskQuery, asOf: string) {
+  return isRecentExplanation(query.question)
+    ? timelineQuerySchema.parse({
+        start: new Date(Date.parse(asOf) - 30 * 60_000).toISOString(),
+        end: asOf,
+        source: query.source,
+      })
+    : null;
+}
 export const historyRangeSchema = z
   .object({ start: z.iso.datetime(), end: z.iso.datetime() })
   .strict()
@@ -105,6 +120,7 @@ export const agentDataSchema = z
     query: askQuerySchema,
     provider: reasoningProviderSchema,
     asOf: z.iso.datetime(),
+    explanationRange: timelineQuerySchema.nullable(),
     answer: z.string().min(1).max(16000),
     selectedFacts: z.array(factSchema).min(1).max(12),
     evidence: z.array(evidenceSchema).min(1).max(12),
@@ -113,7 +129,9 @@ export const agentDataSchema = z
   .superRefine((data, ctx) => {
     const evidenceIds = new Set<string>(),
       facts = new Map<string, EvidenceFact>();
-    let valid = true;
+    const expectedRange = recentExplanationRange(data.query, data.asOf);
+    let valid =
+      JSON.stringify(data.explanationRange) === JSON.stringify(expectedRange);
     for (const evidence of data.evidence) {
       if (evidenceIds.has(evidence.id)) valid = false;
       evidenceIds.add(evidence.id);

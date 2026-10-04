@@ -19,49 +19,80 @@ const actual = new GeminiReasoningProvider(
   env.GEMINI_API_KEY,
   env.GEMINI_MODEL,
 );
-let turns = 0,
-  providerStatus: number | undefined;
-const provider: ReasoningProvider = {
-  kind: 'gemini',
-  configured: true,
-  next: async (contents, signal) => {
-    turns++;
-    try {
-      return await actual.next(contents, signal);
-    } catch (error) {
-      if (error instanceof ProviderError) providerStatus = error.status;
-      throw error;
-    }
-  },
-};
-const { store } = createReasoningFixture();
-const result = await runAgent({
-  request: fixtureRequest,
-  provider,
-  store,
-  userId: randomUUID(),
-  signal: AbortSignal.timeout(60_000),
-});
-const passed = Boolean(
-  result.data &&
-  result.data.provider === 'gemini' &&
-  result.data.evidence.length >= 2 &&
-  !result.data.answer.startsWith('Iris could not finish') &&
-  result.data.selectedFacts.every((f) =>
-    result.data!.evidence.some((e) =>
-      e.facts.some((x) => x.id === f.id && x.text === f.text),
-    ),
-  ),
-);
-console.log(
-  JSON.stringify({
-    check: 'live_gemini_synthetic_fixture',
-    passed,
-    state: result.state,
-    evidenceStates: result.data?.evidence.map((e) => e.status) ?? [],
-    turns,
-    tools: result.data?.evidence.map((e) => e.tool) ?? [],
-    ...(providerStatus ? { providerHttpStatus: providerStatus } : {}),
-  }),
-);
-if (!passed) process.exitCode = 1;
+for (const scenario of ['multi_step', 'recent_explanation'] as const) {
+  let turns = 0,
+    providerStatus: number | undefined,
+    providerFailure: string | undefined;
+  const functionCounts: number[] = [];
+  const provider: ReasoningProvider = {
+    kind: 'gemini',
+    configured: true,
+    next: async (contents, signal) => {
+      turns++;
+      try {
+        const content = await actual.next(contents, signal);
+        functionCounts.push(
+          content.parts.filter((part) => part.functionCall).length,
+        );
+        return content;
+      } catch (error) {
+        if (error instanceof ProviderError) providerStatus = error.status;
+        else
+          providerFailure =
+            error instanceof Error &&
+            error.message === 'Gemini did not complete a tool turn'
+              ? 'incomplete_turn'
+              : error instanceof Error && error.name === 'ZodError'
+                ? 'invalid_response'
+                : 'transport_or_response_failure';
+        throw error;
+      }
+    },
+  };
+  const { store } = createReasoningFixture();
+  const result = await runAgent({
+    request: {
+      ...fixtureRequest,
+      ...(scenario === 'recent_explanation'
+        ? { question: 'Iris, explain the last 30 minutes.' }
+        : {}),
+    },
+    provider,
+    store,
+    userId: randomUUID(),
+    signal: AbortSignal.timeout(60_000),
+  });
+  const tools = result.data?.evidence.map((e) => e.tool) ?? [];
+  const passed = Boolean(
+    result.data &&
+    result.data.provider === 'gemini' &&
+    result.data.evidence.length >= 2 &&
+    !result.data.answer.startsWith('Iris could not finish') &&
+    result.data.selectedFacts.every((f) =>
+      result.data!.evidence.some((e) =>
+        e.facts.some((x) => x.id === f.id && x.text === f.text),
+      ),
+    ) &&
+    (scenario !== 'recent_explanation' ||
+      (result.data.explanationRange &&
+        tools.filter((t) => t === 'get_metrics').length === 3 &&
+        tools.filter((t) => t === 'compare_baseline').length === 3 &&
+        tools.includes('get_context') &&
+        tools.includes('find_similar_sessions'))),
+  );
+  console.log(
+    JSON.stringify({
+      check: 'live_gemini_synthetic_fixture',
+      scenario,
+      passed,
+      state: result.state,
+      evidenceStates: result.data?.evidence.map((e) => e.status) ?? [],
+      turns,
+      functionCounts,
+      tools,
+      ...(providerFailure ? { providerFailure } : {}),
+      ...(providerStatus ? { providerHttpStatus: providerStatus } : {}),
+    }),
+  );
+  if (!passed) process.exitCode = 1;
+}

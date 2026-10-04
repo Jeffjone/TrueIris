@@ -33,7 +33,8 @@ Opening Timeline makes authenticated scoped history queries without activating s
 | Manual activity                                    | User selection                                     | Transient choice; label on opted-in measurements/context           | Configured API/Tiger Data only when saving                                |
 | Screen image                                       | Planned separate opt-in                            | None                                                               | Planned transient Gemini classification                                   |
 | Microphone / spoken responses                      | Planned user-started voice                         | None                                                               | Planned ElevenLabs streaming                                              |
-| Questions, journal, summaries                      | Planned conversation/memory controls               | None                                                               | Planned Tiger Data / Gemini                                               |
+| Questions and retrieved evidence                   | Explicit Ask Iris action                           | Request/view memory only                                           | Gemini; no private window titles or raw media                             |
+| Journal and episodic summaries                     | Planned memory controls                            | None                                                               | Planned Tiger Data / Gemini                                               |
 
 Future screen understanding requires explicit opt-in and discards pixels after classification. Logging must not serialize arbitrary provider events, prompts, screenshots, audio or configuration objects. No scraping is planned. See [sensor lifecycle](PRESAGE_SETUP.md) for quality gates, failure states and stop timing.
 
@@ -52,3 +53,7 @@ Personal baselines query already saved physiology and, for activity comparisons,
 ## Feature 9 questions and evidence
 
 Sending a question from Ask Iris shares its text and requested projected evidence with Gemini, with disclosure before sending. No capture starts. Requested summaries can include accepted metrics, historical context application names, manual labels and baselines. Window titles, classification reasons, frames, screenshots and private credentials/owner IDs are excluded. TrueIris does not log or persist questions, answers, tool transcripts or thought signatures. They remain in request/view memory; navigation/reload/source changes/clear discard results, cancellation stops orchestration, and deletion cancels requests and removes history inputs. The provider is explicit, with no mock fallback. See [Gemini privacy and limits](GEMINI_AGENT.md).
+
+## Feature 10 recent explanation
+
+The dedicated action shares the same disclosure and provider privacy boundary as a typed question. It reads only the selected source, pinned recent window and bounded earlier evidence. The chart fetch remains within the authenticated timeline capability and does not send raw chart data to Gemini. Its highlight and narrative clear with the question/view; no narrative, chart snapshot, screenshot or voice recording is persisted. No extra capture or retention is introduced. See [recent explanation](RECENT_EXPLANATION.md).

@@ -78,14 +78,12 @@ export function createReasoningFixture() {
       return {
         range,
         points,
-        activities: [
-          {
-            start: points[0]!.start,
-            end: points[0]!.end,
-            sessionId,
-            activity: 'Coding',
-          },
-        ],
+        activities: points.map((p) => ({
+          start: p.start,
+          end: p.end,
+          sessionId,
+          activity: 'Coding',
+        })),
         gaps: [],
         contexts: points.map((p, i) => ({
           id: `00000000-0000-4000-8000-00000000000${i + 4}`,
@@ -126,44 +124,61 @@ export function createReasoningFixture() {
           Date.parse(query.range.start) - query.lookbackDays * 86400_000,
         ).toISOString(),
         historyEnd: query.range.start,
-        comparisons: (['pulse', 'respiration', 'hrv'] as const).map(
-          (metric) => ({
-            metric,
-            current:
-              metric === 'pulse' ? 81 : metric === 'respiration' ? 12 : 30,
-            currentCount: 60,
-            baseline:
-              metric === 'pulse' ? 72 : metric === 'respiration' ? 12 : 30,
-            differenceAbsolute: metric === 'pulse' ? 9 : 0,
-            differencePercent: metric === 'pulse' ? 12.5 : 0,
-            deviation: metric === 'pulse' ? 4.5 : 0,
-            sampleCount: 100,
-            dayCount: 7,
-            confidence: 0.9,
-            state: 'ready' as const,
-          }),
+        comparisons: (['pulse', 'respiration', 'hrv'] as const).map((metric) =>
+          query.range.source !== 'mock'
+            ? {
+                metric,
+                current: null,
+                currentCount: 0,
+                baseline: null,
+                differenceAbsolute: null,
+                differencePercent: null,
+                deviation: null,
+                sampleCount: 0,
+                dayCount: 0,
+                confidence: 0,
+                state: 'insufficient_history',
+              }
+            : {
+                metric,
+                current:
+                  metric === 'pulse' ? 81 : metric === 'respiration' ? 12 : 30,
+                currentCount: 60,
+                baseline:
+                  metric === 'pulse' ? 72 : metric === 'respiration' ? 12 : 30,
+                differenceAbsolute: metric === 'pulse' ? 9 : 0,
+                differencePercent: metric === 'pulse' ? 12.5 : 0,
+                deviation: metric === 'pulse' ? 4.5 : 0,
+                sampleCount: 100,
+                dayCount: 7,
+                confidence: 0.9,
+                state: 'ready' as const,
+              },
         ),
       }),
     similarSessions: async (_user, query) => ({
       query,
-      sessions: [
-        {
-          range: {
-            start: new Date(
-              Date.parse(query.range.end) - 86400_000,
-            ).toISOString(),
-            end: new Date(
-              Date.parse(query.range.end) - 86400_000 + 30_000,
-            ).toISOString(),
-            source: query.source,
-          },
-          activity: query.activity,
-          count: 30,
-          pulse: 74,
-          respiration: 12,
-          hrv: 30,
-        },
-      ],
+      sessions:
+        query.source !== 'mock'
+          ? []
+          : [
+              {
+                range: {
+                  start: new Date(
+                    Date.parse(query.range.end) - 86400_000,
+                  ).toISOString(),
+                  end: new Date(
+                    Date.parse(query.range.end) - 86400_000 + 30_000,
+                  ).toISOString(),
+                  source: query.source,
+                },
+                activity: query.activity,
+                count: 30,
+                pulse: 74,
+                respiration: 12,
+                hrv: 30,
+              },
+            ],
     }),
   };
   return { store, scopes };

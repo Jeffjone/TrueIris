@@ -2,28 +2,28 @@
 
 Complete one feature, validate, review the diff, update documentation, commit, push, and check Git status before starting the next. Section 49 of the master brief controls priority when its feature numbering differs from the detailed sections.
 
-| Priority | Slice                         | Acceptance gate                                                                                                                                           |
-| -------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| P0       | Foundation (completed)        | Desktop main/preload/renderer, routes, error boundary, status, API, strict typing, config/logging, checks and runnable production output                  |
-| P0       | Presage sensor (completed)    | Genuine pulse from camera on demo machine; typed normalization; quality/error states; labeled mock provider; permission and native packaging verification |
-| P0       | Live UI (completed)           | Dominant pulse; breathing/HRV when available; confidence; session/context; reliable reactive updates                                                      |
-| P0       | Tiger persistence (completed) | Authenticated scoped ingestion; bounded batch/retry; idempotency; timestamp tests; epoch computation; migrations                                          |
-| P0       | Timeline (completed)          | Trends/context/gaps; period selection; no invented readings; timezone handling                                                                            |
-| P0       | Context engine (completed)    | Supported foreground app/idle provider; consent; interval segmentation; manual override; unsupported-platform fallback                                    |
-| P0       | Personal baselines            | Activity/time-specific comparisons; minimum coverage/history; no medical thresholds; source-aware statistics                                              |
-| P0       | Gemini agent                  | Allowlisted Zod tools, scoped SQL, bounded multi-step calls; every numeric claim backed by evidence                                                       |
-| P0       | Explain last 30 minutes       | Metrics/context/baseline retrieval; narrative + evidence cards + timeline highlight; missing-history fallback                                             |
-| P0       | ElevenLabs voice              | Explicit microphone start, partial/final STT, agent orchestration, streaming speech, text fallback; no renderer keys                                      |
-| P1       | Semantic memory               | Session summaries, embedding model/dimension, scoped similarity retrieval with factual metadata                                                           |
-| P1       | Patterns                      | Editorial evidence cards; sample counts, uncertainty, correlation language                                                                                |
-| P1       | Focus mode                    | Goal, timer, switches, baseline comparison, completion summary                                                                                            |
-| P1       | Event reconstruction          | Selected range → timestamped observations → grounded narrative                                                                                            |
-| P1       | Demo data                     | Deterministic multi-day history marked `demo_seed`; targeted clear operation                                                                              |
-| P1       | Demo mode                     | Explicit fallback with correct provenance; real sensing preferred; repeatable questions and visible diagnostic health                                     |
-| P1       | Vultr deployment              | Docker runtime, TLS/auth, health/readiness, managed database, reproducible deployment instructions                                                        |
-| P2       | Experiments                   | Conditions, minimum sessions, self-report; association vs insufficient evidence                                                                           |
-| P2       | Proactive insights            | Personal evidence, conservative cadence, user control                                                                                                     |
-| P2       | Optional screen context       | Explicit opt-in, visible activation, temporary downscaled image, classification only, discard pixels                                                      |
+| Priority | Slice                               | Acceptance gate                                                                                                                                           |
+| -------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P0       | Foundation (completed)              | Desktop main/preload/renderer, routes, error boundary, status, API, strict typing, config/logging, checks and runnable production output                  |
+| P0       | Presage sensor (completed)          | Genuine pulse from camera on demo machine; typed normalization; quality/error states; labeled mock provider; permission and native packaging verification |
+| P0       | Live UI (completed)                 | Dominant pulse; breathing/HRV when available; confidence; session/context; reliable reactive updates                                                      |
+| P0       | Tiger persistence (completed)       | Authenticated scoped ingestion; bounded batch/retry; idempotency; timestamp tests; epoch computation; migrations                                          |
+| P0       | Timeline (completed)                | Trends/context/gaps; period selection; no invented readings; timezone handling                                                                            |
+| P0       | Context engine (completed)          | Supported foreground app/idle provider; consent; interval segmentation; manual override; unsupported-platform fallback                                    |
+| P0       | Personal baselines (completed)      | Activity/time-specific comparisons; minimum coverage/history; no medical thresholds; source-aware statistics                                              |
+| P0       | Gemini agent (completed)            | Allowlisted Zod tools, scoped SQL, bounded multi-step calls; every numeric claim backed by evidence                                                       |
+| P0       | Explain last 30 minutes (completed) | Metrics/context/baseline retrieval; narrative + evidence cards + timeline highlight; missing-history fallback                                             |
+| P0       | ElevenLabs voice                    | Explicit microphone start, partial/final STT, agent orchestration, streaming speech, text fallback; no renderer keys                                      |
+| P1       | Semantic memory                     | Session summaries, embedding model/dimension, scoped similarity retrieval with factual metadata                                                           |
+| P1       | Patterns                            | Editorial evidence cards; sample counts, uncertainty, correlation language                                                                                |
+| P1       | Focus mode                          | Goal, timer, switches, baseline comparison, completion summary                                                                                            |
+| P1       | Event reconstruction                | Selected range → timestamped observations → grounded narrative                                                                                            |
+| P1       | Demo data                           | Deterministic multi-day history marked `demo_seed`; targeted clear operation                                                                              |
+| P1       | Demo mode                           | Explicit fallback with correct provenance; real sensing preferred; repeatable questions and visible diagnostic health                                     |
+| P1       | Vultr deployment                    | Docker runtime, TLS/auth, health/readiness, managed database, reproducible deployment instructions                                                        |
+| P2       | Experiments                         | Conditions, minimum sessions, self-report; association vs insufficient evidence                                                                           |
+| P2       | Proactive insights                  | Personal evidence, conservative cadence, user control                                                                                                     |
+| P2       | Optional screen context             | Explicit opt-in, visible activation, temporary downscaled image, classification only, discard pixels                                                      |
 
 Observability and privacy controls are implemented alongside each integration, with final end-to-end review before demo readiness. The initial read-only privacy page is not a substitute for working controls later.
 
@@ -66,4 +66,8 @@ Activity and local time-of-day baselines use earlier quality-filtered history wi
 
 ## Feature 9 verification
 
-Gemini selects validated read-only tools and assembles answers from cited facts over scoped metrics/context/baselines and recent activity-matched sensing periods. Explicit mock reasoning supports offline tests; semantic memory reports unavailable pending Feature 11. Ask Iris text provides the initial validation surface with cancellation and provider/source labels. Unit/API/main, built desktop, real scoped SQL and opt-in live Gemini synthetic-fixture checks cover the feature. The dedicated last-30-minute flow and highlighted evidence are Feature 10. See [Gemini agent](GEMINI_AGENT.md).
+Gemini selects validated read-only tools and assembles answers from cited facts over scoped metrics/context/baselines and recent activity-matched sensing periods. Explicit mock reasoning supports offline tests; semantic memory reports unavailable pending Feature 11. Ask Iris text provides the initial validation surface with cancellation and provider/source labels. Unit/API/main, built desktop, real scoped SQL and opt-in live Gemini synthetic-fixture checks cover the feature. The dedicated last-30-minute flow and highlighted evidence are implemented in Feature 10. See [Gemini agent](GEMINI_AGENT.md).
+
+## Feature 10 verification
+
+The one-click and typed “Iris, explain the last 30 minutes” action pins a source-scoped 30-minute window, requires metrics/context/baselines/earlier sessions, and displays a cited descriptive narrative beside its highlighted timeline. Sparse, missing, mixed, low-confidence and insufficient-history evidence remains explicit. Unit/schema, built desktop, real Tiger Data persistence-to-explanation and opt-in live Gemini synthetic-fixture checks cover the flow. Voice and semantic similarity remain deferred. See [recent explanation behavior](RECENT_EXPLANATION.md).

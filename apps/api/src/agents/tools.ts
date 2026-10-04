@@ -13,9 +13,11 @@ import {
   type AskRequest,
   type AgentEvidence,
   type TimelineQuery,
+  recentExplanationRange,
 } from '@trueiris/schemas';
 import type { MeasurementStore } from '@trueiris/db';
 import { dayRange } from './time';
+import { pulseTrajectory } from './trajectory';
 
 const period = z
   .object({ start: z.iso.datetime(), end: z.iso.datetime() })
@@ -97,7 +99,7 @@ export async function executeTool(
   name: Exclude<ToolName, 'respond'>,
   args: unknown,
   options: {
-    store: MeasurementStore;
+    store: Pick<MeasurementStore, 'timeline' | 'baselines' | 'similarSessions'>;
     userId: string;
     request: AskRequest;
     asOf: string;
@@ -145,7 +147,11 @@ export async function executeTool(
   const rangeFor = (range: { start: string; end: string }) => {
     if (Date.parse(range.end) > Date.parse(asOf) + 1000)
       throw new Error('Future history is unavailable');
-    return timelineQuerySchema.parse({ ...range, source: request.source });
+    return timelineQuerySchema.parse({
+      start: new Date(range.start).toISOString(),
+      end: new Date(range.end).toISOString(),
+      source: request.source,
+    });
   };
   const timeline = async (range: TimelineQuery) => {
     signal.throwIfAborted();
@@ -392,6 +398,16 @@ export async function executeTool(
             `In this period, ${label} ${info.label.toLowerCase()} averaged ${number(c.current!)} ${info.unit}, ${number(Math.abs(c.differenceAbsolute!))} ${info.unit} ${c.differenceAbsolute! >= 0 ? 'above' : 'below'} your earlier baseline${c.differencePercent === null ? ' (percentage unavailable for a zero baseline)' : ` (${number(Math.abs(c.differencePercent))}% ${c.differencePercent >= 0 ? 'above' : 'below'})`}.`,
             c.current,
           );
+      }
+      if (input.metric === 'pulse' && recentExplanationRange(request, asOf)) {
+        const data = await timeline(result.range);
+        for (const observation of pulseTrajectory(
+          data,
+          c,
+          input.context,
+          request.timezone,
+        ))
+          fact(observation.text, observation.value, observation.range);
       }
       break;
     }

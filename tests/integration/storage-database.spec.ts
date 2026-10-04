@@ -7,6 +7,7 @@ import {
 } from '../../packages/shared/src/config';
 import { TigerStore } from '../../packages/db/src/index';
 import { buildApp } from '../../apps/api/src/app';
+import { MockReasoningProvider } from '../../apps/api/src/agents/provider';
 import { launchSensorDesktop } from './helpers';
 
 test('built desktop saves labeled mock measurements and epochs through the real API into Timescale and displays their timeline', async () => {
@@ -22,7 +23,12 @@ test('built desktop saves labeled mock measurements and epochs through the real 
   const store = new TigerStore(env.DATABASE_URL, env.DATABASE_CA_FILE);
   const userId = randomUUID();
   const token = randomUUID() + randomUUID();
-  const api = buildApp('silent', { store, userId, token });
+  const api = buildApp('silent', {
+    store,
+    userId,
+    token,
+    reasoning: new MockReasoningProvider(),
+  });
   const url = await api.listen({ host: '127.0.0.1', port: 0 });
   const { app, page } = await launchSensorDesktop('steady', {
     TRUEIRIS_API_URL: url,
@@ -181,6 +187,32 @@ test('built desktop saves labeled mock measurements and epochs through the real 
     await expect(baselines.getByText('Current', { exact: false })).toHaveCount(
       3,
     );
+    await page.getByRole('link', { name: 'Ask Iris', exact: true }).click();
+    await page.getByLabel('Iris history source').selectOption('mock');
+    await page.getByLabel('Iris timezone').selectOption('UTC');
+    await page
+      .getByRole('button', { name: 'Explain last 30 minutes', exact: true })
+      .click();
+    const answer = page.getByRole('region', { name: 'Iris answer' });
+    await expect(answer).toContainText(
+      '21 qualifying samples across 3 local dates',
+    );
+    await expect(answer).toContainText('historical period');
+    await expect(answer).toContainText('MOCK REASONING');
+    const explanationChart = answer.getByRole('application', {
+      name: 'Explanation timeline chart',
+    });
+    await expect(explanationChart).toBeVisible();
+    const selection = explanationChart.getByTestId('timeline-selection');
+    expect(
+      Number(await selection.getAttribute('data-end')) -
+        Number(await selection.getAttribute('data-start')),
+    ).toBe(1_800_000);
+    expect(
+      await page.evaluate(() =>
+        window.trueiris!.getSensor().then((s) => s.phase),
+      ),
+    ).toBe('off');
   } finally {
     await app.close();
     try {
