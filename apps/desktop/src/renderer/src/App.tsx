@@ -9,6 +9,12 @@ import {
   storageLabel,
   type StorageControls,
 } from './components/StoragePanel';
+import {
+  ContextPanel,
+  useContext,
+  contextLabel,
+  type ContextControls,
+} from './components/ContextPanel';
 import { SensorPanel } from './components/SensorPanel';
 import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
 import type { DesktopStatus } from '@trueiris/schemas';
@@ -84,10 +90,12 @@ function Settings({
   status,
   sensor,
   storage,
+  context,
 }: {
   status: DesktopStatus | null;
   sensor: SensorControls;
   storage: StorageControls;
+  context: ContextControls;
 }) {
   return (
     <>
@@ -100,11 +108,11 @@ function Settings({
       <section className="settings-surface">
         <h2>Capture & privacy</h2>
         <p className="muted">
-          Camera sensing is controlled below. Other capture integrations remain
-          off.
+          Camera and desktop capture are independent and controlled below.
         </p>
         <SensorPanel sensor={sensor} />
-        {['Desktop context', 'Screen understanding', 'Voice'].map((label) => (
+        <ContextPanel context={context} />
+        {['Screen understanding', 'Voice'].map((label) => (
           <div className="settings-row" key={label}>
             <span>{label}</span>
             <span className="pill">Off · not connected</span>
@@ -151,6 +159,7 @@ function Settings({
 export function App() {
   const { status, checked } = useStatus();
   const sensor = useSensor();
+  const context = useContext();
   const storage = useStorage();
   const [activity, setActivity] = useState<Activity>('');
   const [activityError, setActivityError] = useState(false);
@@ -201,6 +210,22 @@ export function App() {
           <div className="global-storage" data-testid="global-storage-status">
             {storageLabel(storage.status)}
           </div>
+          <div className="global-sensor global-context">
+            <span data-testid="global-context-status">
+              {contextLabel(context.snapshot)}
+            </span>
+            {context.snapshot &&
+              ['starting', 'running'].includes(context.snapshot.phase) && (
+                <button
+                  disabled={context.busy}
+                  onClick={() => {
+                    void context.action('stop');
+                  }}
+                >
+                  Stop context
+                </button>
+              )}
+          </div>
           <div className="global-sensor">
             <span data-testid="global-capture-status">
               {sensorLabel(sensor.snapshot)}
@@ -233,6 +258,7 @@ export function App() {
                 )}
                 <LiveView
                   sensor={sensor}
+                  context={context}
                   activity={activity}
                   onActivity={(value) => void updateActivity(value)}
                 />
@@ -270,7 +296,12 @@ export function App() {
           <Route
             path="/settings"
             element={
-              <Settings status={status} sensor={sensor} storage={storage} />
+              <Settings
+                status={status}
+                sensor={sensor}
+                storage={storage}
+                context={context}
+              />
             }
           />
           <Route path="*" element={<Navigate to="/live" replace />} />

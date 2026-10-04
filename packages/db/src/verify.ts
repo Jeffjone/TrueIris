@@ -5,6 +5,7 @@ import {
   parseEnvironment,
 } from '@trueiris/shared/config';
 import type { Measurement } from '@trueiris/schemas';
+import { verifyContext } from './verify-context';
 import { migrate, SessionConflict, TigerStore } from './index';
 
 // Opt-in real database check: fixtures use random owners and are always scoped/cleaned.
@@ -232,6 +233,7 @@ try {
   assert.equal(bounded.summary.observedSeconds, 3001);
   assert.equal(bounded.summary.sessions, 2);
   assert.equal(bounded.summary.pulse.mean, 72);
+  await verifyContext(store, users, base);
   const other = measurement(0, { sessionId: randomUUID(), source: 'live' });
   await store.ingest(users[1]!, [other]);
   await store.deleteData(users[0]!);
@@ -248,9 +250,17 @@ try {
   await assert.rejects(store.ingest(users[0]!, m), SessionConflict);
   assert.equal((await store.exportPage(users[1]!)).measurements.length, 1);
   console.log(
-    'Timescale verification passed: migrations, hypertable, batching, idempotency, concurrent epochs, rollback, ownership, pagination, timeline ranges/quality/activity/gaps/source isolation/display caps, deletion and replay protection.',
+    'Timescale verification passed: migrations, hypertable, batching, idempotency, concurrent epochs, rollback, ownership, pagination, timeline ranges/quality/activity/gaps/source isolation/display caps, context consent payloads/provenance/immutable IDs/overlap/concurrency/pagination/scoping/clipping/display caps, deletion and replay protection.',
   );
-} catch {
+} catch (error) {
+  const code = (error as { code?: unknown }).code;
+  const location =
+    error instanceof Error
+      ? error.stack?.match(/(?:verify(?:-context)?|timeline)\.ts:\d+:\d+/)?.[0]
+      : undefined;
+  if (typeof code === 'string' && /^[A-Z0-9_]{5,32}$/.test(code))
+    console.error(`Verification error code: ${code}`);
+  if (location) console.error(`Verification location: ${location}`);
   console.error(
     'Database verification failed; no credentials or private records logged. Check database setup and run checks again.',
   );

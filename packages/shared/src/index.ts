@@ -1,4 +1,6 @@
 import type {
+  ContextOptions,
+  ContextSnapshot,
   DesktopStatus,
   SensorEvent,
   SensorProviderKind,
@@ -21,7 +23,16 @@ export const STORAGE_CHANNELS = {
   get: 'trueiris:storage:get',
   enable: 'trueiris:storage:enable',
   export: 'trueiris:storage:export',
+  exportContext: 'trueiris:storage:export-context',
   delete: 'trueiris:storage:delete',
+} as const;
+
+export const CONTEXT_CHANNELS = {
+  get: 'trueiris:context:get',
+  start: 'trueiris:context:start',
+  stop: 'trueiris:context:stop',
+  options: 'trueiris:context:options',
+  update: 'trueiris:context:update',
 } as const;
 
 export const TIMELINE_CHANNEL = 'trueiris:timeline:get';
@@ -38,6 +49,12 @@ export interface DesktopBridge {
   setActivity(
     activity: RecordedActivity | null,
   ): Promise<RecordedActivity | null>;
+  getContext(): Promise<ContextSnapshot>;
+  startContext(): Promise<ContextSnapshot>;
+  stopContext(): Promise<ContextSnapshot>;
+  setContextOptions(options: ContextOptions): Promise<ContextSnapshot>;
+  onContext(listener: (snapshot: ContextSnapshot) => void): () => void;
+  exportContext(): Promise<'saved' | 'cancelled' | 'failed'>;
   getSensor(): Promise<SensorSnapshot>;
   startSensor(provider: SensorProviderKind): Promise<SensorSnapshot>;
   stopSensor(): Promise<SensorSnapshot>;

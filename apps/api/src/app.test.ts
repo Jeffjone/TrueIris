@@ -48,6 +48,8 @@ const measurement = {
 function fakeStore(): MeasurementStore {
   return {
     timeline: vi.fn(),
+    ingestContext: vi.fn(async () => ({ accepted: 1, duplicates: 0 })),
+    exportContextPage: vi.fn(async () => ({ intervals: [], next: null })),
     health: vi.fn(async () => true),
     ingest: vi.fn(async () => ({ accepted: 1, duplicates: 0 })),
     exportPage: vi.fn(async () => ({
@@ -320,4 +322,144 @@ it('authenticates and scopes bounded timeline reads, rejecting ownership overrid
   } finally {
     await app.close();
   }
+});
+
+describe('private desktop context routes', () => {
+  const interval = {
+    id: '00000000-0000-4000-8000-000000000005',
+    sessionId: '00000000-0000-4000-8000-000000000006',
+    source: 'mock' as const,
+    startedAt: '2026-10-03T12:00:00.000Z',
+    start: '2026-10-03T12:00:00.000Z',
+    end: '2026-10-03T12:00:01.000Z',
+    application: { id: 'test.code', name: 'Visual Studio Code' },
+    windowTitle: null,
+    manualActivity: null,
+    classification: {
+      activity: 'Coding' as const,
+      confidence: 0.9,
+      reason: 'Code editor foreground.',
+    },
+    idle: false,
+    idleSeconds: 0,
+    sessionSeconds: 1,
+    applicationSwitches: 0,
+    focusMode: false,
+  };
+  it('requires auth and binds context ingestion/export to server identity', async () => {
+    const store = fakeStore();
+    vi.mocked(store.exportContextPage).mockResolvedValue({
+      intervals: [interval],
+      next: null,
+    });
+    const app = buildApp('silent', { store, token, userId });
+    try {
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/context/batch',
+            payload: { intervals: [interval] },
+          })
+        ).statusCode,
+      ).toBe(401);
+      expect((await app.inject('/context/export')).statusCode).toBe(401);
+      const headers = { authorization: `Bearer ${token}` };
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/context/batch',
+            headers,
+            payload: { intervals: [interval] },
+          })
+        ).statusCode,
+      ).toBe(200);
+      expect(store.ingestContext).toHaveBeenCalledWith(userId, [interval]);
+      expect(
+        (await app.inject({ url: '/context/export', headers })).json(),
+      ).toEqual({ intervals: [interval], next: null });
+      expect(store.exportContextPage).toHaveBeenCalledWith(userId, undefined);
+    } finally {
+      await app.close();
+    }
+  });
+  it('rejects identity spoofing, future/bad bounds and unknown fields before storage', async () => {
+    const store = fakeStore(),
+      app = buildApp('silent', { store, token, userId });
+    try {
+      const headers = { authorization: `Bearer ${token}` };
+      for (const patch of [
+        { userId: 'forged' },
+        { end: interval.start },
+        { end: '2026-10-03T12:00:31.000Z' },
+        {
+          start: new Date(Date.now() + 90_000).toISOString(),
+          end: new Date(Date.now() + 91_000).toISOString(),
+        },
+        {
+          classification: {
+            activity: 'Unknown',
+            confidence: 1.5,
+            reason: 'invalid',
+          },
+        },
+      ])
+        expect(
+          (
+            await app.inject({
+              method: 'POST',
+              url: '/context/batch',
+              headers,
+              payload: { intervals: [{ ...interval, ...patch }] },
+            })
+          ).statusCode,
+        ).toBe(400);
+      expect(store.ingestContext).not.toHaveBeenCalled();
+      expect(
+        (await app.inject({ url: '/context/export?cursor=bad', headers }))
+          .statusCode,
+      ).toBe(400);
+    } finally {
+      await app.close();
+    }
+  });
+  it('maps ownership/overlap conflicts and hides storage errors', async () => {
+    const store = fakeStore(),
+      app = buildApp('silent', { store, token, userId });
+    const headers = { authorization: `Bearer ${token}` };
+    try {
+      vi.mocked(store.ingestContext).mockRejectedValue(new SessionConflict());
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/context/batch',
+            headers,
+            payload: { intervals: [interval] },
+          })
+        ).statusCode,
+      ).toBe(409);
+      vi.mocked(store.ingestContext).mockRejectedValue(
+        new Error('private-window-title SQL db-secret'),
+      );
+      const response = await app.inject({
+        method: 'POST',
+        url: '/context/batch',
+        headers,
+        payload: { intervals: [interval] },
+      });
+      expect(response.statusCode).toBe(503);
+      expect(response.body).not.toMatch(/private-window-title|SQL|db-secret/);
+      vi.mocked(store.exportContextPage).mockResolvedValue({
+        intervals: [{ ...interval, unexpected: 'private' } as typeof interval],
+        next: null,
+      });
+      expect(
+        (await app.inject({ url: '/context/export', headers })).statusCode,
+      ).toBe(503);
+    } finally {
+      await app.close();
+    }
+  });
 });

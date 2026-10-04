@@ -2,7 +2,7 @@
 
 Built for RowdyHacks XII. TrueIris is a personal context intelligence desktop application: physiological observations, computer activity, temporal history, and evidence-grounded conversation.
 
-The master instructions live in [TRUEIRIS_SPEC.md](TRUEIRIS_SPEC.md). The foundation, Feature 2 sensor integration, Feature 3 live view, Feature 4 Tiger Data ingestion, and Feature 5 Today timeline are implemented: user-started Presage camera sensing, validated pulse/respiration/HRV/talking events, confidence gates, and an explicitly labeled mock provider. The live view adds per-metric confidence, responsive signal states, a sensing-session clock, and explicitly manual activity selection. Opt-in authenticated persistence adds bounded retries, duplicate protection, Timescale measurements, 30-second epochs, and export/delete controls. The Today timeline adds source-separated physiological trends, recorded manual activity, signal gaps, timezone handling, and point/period selection. OS context, AI, and voice integrations remain planned. See the [architecture](docs/ARCHITECTURE.md).
+The master instructions live in [TRUEIRIS_SPEC.md](TRUEIRIS_SPEC.md). The foundation, Feature 2 sensor integration, Feature 3 live view, Feature 4 Tiger Data ingestion, Feature 5 Today timeline, and Feature 6 desktop context are implemented: user-started Presage camera sensing, validated pulse/respiration/HRV/talking events, confidence gates, and an explicitly labeled mock provider. The live view adds per-metric confidence, responsive signal states, a sensing-session clock, and explicitly manual activity selection. Opt-in authenticated persistence adds bounded retries, duplicate protection, Timescale measurements, 30-second epochs, and export/delete controls. The Today timeline adds source-separated physiological trends, recorded manual activity, signal gaps, timezone handling, and point/period selection. Desktop context adds opt-in foreground application/switches, idle/session duration, optional window titles, manual activity override and focus state, persisted as independent intervals and shown alongside physiology. AI and voice integrations remain planned. See the [architecture](docs/ARCHITECTURE.md).
 
 ## Architecture
 
@@ -15,9 +15,10 @@ flowchart LR
   API -. planned .-> AI[Gemini tools and reasoning]
   API -. planned .-> VOICE[ElevenLabs voice]
   SENSOR[Presage / native utility process] --> MAIN
+  CONTEXT[Opt-in OS context / utility process] --> MAIN
 ```
 
-See [initial repo analysis](docs/REPO_ANALYSIS.md), [architecture and data model](docs/ARCHITECTURE.md), [feature roadmap](docs/IMPLEMENTATION_PLAN.md), [live view behavior](docs/LIVE_VIEW.md), [Today timeline](docs/TIMELINE.md), and [privacy inventory](docs/PRIVACY.md).
+See [desktop context and permissions](docs/DESKTOP_CONTEXT.md), [initial repo analysis](docs/REPO_ANALYSIS.md), [architecture and data model](docs/ARCHITECTURE.md), [feature roadmap](docs/IMPLEMENTATION_PLAN.md), [live view behavior](docs/LIVE_VIEW.md), [Today timeline](docs/TIMELINE.md), and [privacy inventory](docs/PRIVACY.md).
 
 ## Requirements and setup
 
@@ -74,7 +75,7 @@ Keep API secrets in `.env` or runtime secret configuration. They are ignored by 
 
 `TRUEIRIS_DEMO_MODE` defaults to `false`; it is strictly parsed. Setting it to `true` currently records the requested configuration only. Seeded history, sensor fallback, and presentation mode are future work. The timeline can show saved mock recordings, but this milestone does not create seeded history.
 
-Camera sensing requires an explicit start and operating-system permission. Its status and Stop control remain visible across routes. Frames stay in the native worker. Saving starts off on each launch. Enabling it in Settings persists labeled measurements and epochs; Stop saving, export and delete controls are available. Presage automatically uploads derived vitals summaries to its insight service; optional diagnostic telemetry is disabled. This disclosure appears before camera start. Desktop context, screenshots, and voice remain inactive. The API binds to loopback and requires a scoped private token for observations/timeline/export/delete. Future screen understanding requires explicit opt-in and transient image processing; all data sources retain real/mock/seed provenance. See [privacy inventory](docs/PRIVACY.md).
+Camera sensing requires an explicit start and operating-system permission. Its status and Stop control remain visible across routes. Frames stay in the native worker. Saving starts off on each launch. Enabling it in Settings persists labeled measurements, epochs and actively captured desktop context; Stop saving, export and delete controls are available. Presage automatically uploads derived vitals summaries to its insight service; optional diagnostic telemetry is disabled. This disclosure appears before camera start. Desktop context is separately user-started, with default-off optional titles, visible Stop, and independently recorded intervals when saving is on. Screenshots and voice remain inactive. The API binds to loopback and requires a scoped private token for observations/timeline/export/delete. Future screen understanding requires explicit opt-in and transient image processing; all data sources retain real/mock/seed provenance. See [privacy inventory](docs/PRIVACY.md).
 
 ## Troubleshooting
 
@@ -85,6 +86,7 @@ Camera sensing requires an explicit start and operating-system permission. Its s
 - **Blank desktop:** inspect terminal lifecycle logs, run `pnpm check`, and confirm the preload and renderer bundles exist in `apps/desktop/out`. Dev uses port 5173 with strict conflict detection.
 - **Linux CI without a display:** run integration tests with `xvfb-run --auto-servernum pnpm test:integration`. CI may need `ELECTRON_DISABLE_SANDBOX=1` only for the automated launch environment; desktop security preferences remain enabled.
 - **No pulse:** check the visible sensor issue and [Presage troubleshooting](docs/PRESAGE_SETUP.md). Values are withheld when the signal is missing, unstable, low-confidence, or affected by motion/talking; mock sensing must be selected explicitly.
+- **Desktop context unavailable:** app detection supports macOS, Windows and X11 with `xprop`; Wayland/headless sessions report unsupported. macOS window titles need a separate opt-in and Accessibility permission. See [context setup](docs/DESKTOP_CONTEXT.md).
 - **No saved history:** check database readiness, migrations and the saving control in Settings. See [Tiger Data troubleshooting](docs/TIGER_DATA_SETUP.md). Choose the matching source and timezone in Timeline. See [timeline behavior](docs/TIMELINE.md). Voice remains planned.
 
 ## Feature workflow

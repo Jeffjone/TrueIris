@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { TimelineData, TimelinePoint } from '@trueiris/schemas';
 import {
   contextChanges,
+  desktopChanges,
   dayBounds,
   metricSegments,
   nearestPoint,
@@ -104,5 +105,45 @@ describe('Today timeline presentation', () => {
     const d = data([point(0), point(300)]);
     expect(nearestPoint(d, 310 * 1000 + Date.parse(at(0)))).toBe(d.points[1]);
     expect(nearestPoint(data([]), 0)).toBe(null);
+  });
+});
+
+describe('independent desktop context changes', () => {
+  it('ignores periodic chunk boundaries and absent observations; recognizes apps and focus even with same activity', () => {
+    const d = data([]);
+    const context = {
+      id: sessionId,
+      sessionId,
+      source: 'live' as const,
+      startedAt: at(0),
+      start: at(0),
+      end: at(10),
+      application: { id: 'code', name: 'Code' },
+      windowTitle: null,
+      manualActivity: null,
+      classification: {
+        activity: 'Coding' as const,
+        confidence: 0.9,
+        reason: 'Code editor foreground.',
+      },
+      idle: false,
+      idleSeconds: 0,
+      sessionSeconds: 10,
+      applicationSwitches: 0,
+      focusMode: false,
+    };
+    d.contexts = [
+      context,
+      { ...context, start: at(10), end: at(20) },
+      {
+        ...context,
+        start: at(20),
+        end: at(30),
+        application: { id: 'xcode', name: 'Xcode' },
+      },
+      { ...context, start: at(40), end: at(50) },
+      { ...context, start: at(50), end: at(60), focusMode: true },
+    ];
+    expect(desktopChanges(d).map((i) => i.start)).toEqual([at(20), at(50)]);
   });
 });

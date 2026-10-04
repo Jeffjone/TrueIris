@@ -15,6 +15,7 @@
     "@trueiris/schemas": "workspace:*",
     "@trueiris/shared": "workspace:*",
     "dotenv": "^17.2.3",
+    "koffi": "2.16.3",
     "pino": "^10.0.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

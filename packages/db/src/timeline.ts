@@ -2,6 +2,7 @@ import type { Pool } from 'pg';
 import {
   timelineQuerySchema,
   timelineDataSchema,
+  contextIntervalSchema,
   type TimelineQuery,
 } from '@trueiris/schemas';
 
@@ -73,8 +74,21 @@ export async function queryTimeline(
       `${readings} SELECT count(*)::int AS count,count(DISTINCT timestamp)::int AS "observedSeconds",count(DISTINCT session_id)::int AS sessions,${metrics} FROM eligible`,
       params,
     );
+    const contexts = await client.query<{
+      payload: unknown;
+      start_time: Date;
+      end_time: Date;
+    }>(
+      `SELECT payload,greatest(start_time,$3::timestamptz) AS start_time,least(end_time,$4::timestamptz) AS end_time FROM context_intervals WHERE user_id=$1 AND source=$2 AND start_time<$4 AND end_time>$3 ORDER BY start_time,id LIMIT 3001`,
+      params,
+    );
     const result = timelineDataSchema.parse({
       range,
+      contexts: contexts.rows.slice(0, 3000).map((row) => ({
+        ...contextIntervalSchema.parse(row.payload),
+        start: iso(row.start_time),
+        end: iso(row.end_time),
+      })),
       points: points.rows.slice(0, 6000).map((p) => ({
         start: iso(
           new Date(Math.max(p.bucket.getTime(), Date.parse(range.start))),
@@ -108,7 +122,8 @@ export async function queryTimeline(
       limited:
         points.rows.length > 6000 ||
         activities.rows.length > 3000 ||
-        gaps.rows.length > 3000,
+        gaps.rows.length > 3000 ||
+        contexts.rows.length > 3000,
     });
     await client.query('COMMIT');
     return result;

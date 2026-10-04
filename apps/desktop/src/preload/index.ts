@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import {
+  CONTEXT_CHANNELS,
   STATUS_CHANNEL,
   SENSOR_CHANNELS,
   STORAGE_CHANNELS,
@@ -8,6 +9,8 @@ import {
   type DesktopBridge,
 } from '@trueiris/shared';
 import {
+  contextSnapshotSchema,
+  contextOptionsSchema,
   desktopStatusSchema,
   sensorSnapshotSchema,
   sensorStartSchema,
@@ -51,6 +54,37 @@ const bridge: DesktopBridge = {
           activitySchema.nullable().parse(activity),
         ),
       ),
+  getContext: async () =>
+    contextSnapshotSchema.parse(await ipcRenderer.invoke(CONTEXT_CHANNELS.get)),
+  startContext: async () =>
+    contextSnapshotSchema.parse(
+      await ipcRenderer.invoke(CONTEXT_CHANNELS.start),
+    ),
+  stopContext: async () =>
+    contextSnapshotSchema.parse(
+      await ipcRenderer.invoke(CONTEXT_CHANNELS.stop),
+    ),
+  setContextOptions: async (options) =>
+    contextSnapshotSchema.parse(
+      await ipcRenderer.invoke(
+        CONTEXT_CHANNELS.options,
+        contextOptionsSchema.parse(options),
+      ),
+    ),
+  onContext: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, input: unknown) => {
+      const result = contextSnapshotSchema.safeParse(input);
+      if (result.success) listener(result.data);
+    };
+    ipcRenderer.on(CONTEXT_CHANNELS.update, handler);
+    return () => {
+      ipcRenderer.removeListener(CONTEXT_CHANNELS.update, handler);
+    };
+  },
+  exportContext: async () =>
+    exportResultSchema.parse(
+      await ipcRenderer.invoke(STORAGE_CHANNELS.exportContext),
+    ),
   getSensor: async () =>
     sensorSnapshotSchema.parse(await ipcRenderer.invoke(SENSOR_CHANNELS.get)),
   startSensor: async (provider) =>

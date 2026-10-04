@@ -1,9 +1,10 @@
 import { open, unlink, rename } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as wait } from 'node:timers/promises';
-import { exportPageSchema } from '@trueiris/schemas';
+import { exportPageSchema, contextExportPageSchema } from '@trueiris/schemas';
 
 interface ExportOptions {
+  kind?: 'context';
   signal?: AbortSignal;
   wait?: (ms: number) => Promise<void>;
 }
@@ -20,7 +21,10 @@ export async function exportMeasurements(
     let cursor: string | null = null;
     do {
       options.signal?.throwIfAborted();
-      const url = new URL('/data/export', apiUrl);
+      const url = new URL(
+        options.kind === 'context' ? '/context/export' : '/data/export',
+        apiUrl,
+      );
       if (cursor) url.searchParams.set('cursor', cursor);
       let response: Response | undefined;
       for (let attempt = 0; attempt < 3; attempt++) {
@@ -51,8 +55,13 @@ export async function exportMeasurements(
           );
       }
       if (!response?.ok) throw new Error('Export unavailable');
-      const page = exportPageSchema.parse(await response.json());
-      for (const measurement of page.measurements) {
+      const input: unknown = await response.json();
+      const page =
+        options.kind === 'context'
+          ? contextExportPageSchema.parse(input)
+          : exportPageSchema.parse(input);
+      const records = 'intervals' in page ? page.intervals : page.measurements;
+      for (const measurement of records) {
         options.signal?.throwIfAborted();
         await file.write(`${JSON.stringify(measurement)}\n`);
       }

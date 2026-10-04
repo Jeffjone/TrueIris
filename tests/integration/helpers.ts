@@ -19,6 +19,7 @@ export async function launchSensorDesktop(
       TRUEIRIS_INGEST_TOKEN: '',
       DATABASE_URL: '',
       TRUEIRIS_SENSOR_PROVIDER: 'presage',
+      TRUEIRIS_CONTEXT_PROVIDER: 'mock',
       TRUEIRIS_MOCK_SENSOR_SCENARIO: scenario,
       LOG_LEVEL: 'silent',
       ELECTRON_RENDERER_URL: '',

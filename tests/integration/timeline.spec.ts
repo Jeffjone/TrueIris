@@ -115,6 +115,8 @@ test('built timeline separates sources, selects points and periods, zooms, shows
   const fixtureNow = Date.now();
   const store: MeasurementStore = {
     health: async () => true,
+    ingestContext: async () => ({ accepted: 0, duplicates: 0 }),
+    exportContextPage: async () => ({ intervals: [], next: null }),
     ingest: async () => ({ accepted: 0, duplicates: 0 }),
     exportPage: async () => ({ measurements: [], next: null }),
     deleteData: async () => {},
@@ -144,7 +146,7 @@ test('built timeline separates sources, selects points and periods, zooms, shows
     await page.getByLabel('Display timezone').selectOption('UTC');
     await expect(
       page.getByRole('heading', {
-        name: 'No saved live readings in this period.',
+        name: 'No saved live observations in this period.',
       }),
     ).toBeVisible();
     await page.getByLabel('History source').selectOption('mock');
@@ -170,7 +172,9 @@ test('built timeline separates sources, selects points and periods, zooms, shows
     const details = page.getByRole('region', { name: 'Period details' });
     await expect(details.getByText('Coding', { exact: true })).toBeVisible();
     await expect(
-      details.getByText('Application detection is off.', { exact: false }),
+      details.getByText('Desktop observations appear separately below.', {
+        exact: false,
+      }),
     ).toBeVisible();
     await expect(
       details.getByText('30 saved readings', { exact: false }),
@@ -289,7 +293,7 @@ test('built timeline separates sources, selects points and periods, zooms, shows
     await page.getByLabel('History source').selectOption('demo_seed');
     await expect(
       page.getByRole('heading', {
-        name: 'No saved demo seed readings in this period.',
+        name: 'No saved demo seed observations in this period.',
       }),
     ).toBeVisible();
     await expect(

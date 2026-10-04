@@ -45,7 +45,7 @@ flowchart TD
   ANSWER --> TTS[ElevenLabs streaming TTS]
 ```
 
-Sensor events, opt-in authenticated persistence and pure 30-second epoch analytics are implemented. The Today timeline and optional recorded manual activity are implemented. Automatic OS context, baselines, memory, agent and voice remain planned.
+Sensor events, opt-in authenticated persistence and pure 30-second epoch analytics are implemented. The Today timeline and optional recorded manual activity are implemented. Opt-in OS context and interval history are implemented in Feature 6. Baselines, memory, agent and voice remain planned.
 
 ## Workspace ownership
 
@@ -66,7 +66,7 @@ Shared workspace packages export TypeScript source and are bundled into applicat
 
 ## Provider boundaries
 
-Feature 2 implements `SensorProvider` with real Presage and explicit mock adapters. Later services add `ContextProvider`, `ReasoningProvider`, `EmbeddingProvider`, and `VoiceProvider` with deterministic mock implementations and failure tests. Adapters normalize vendor responses and hide vendor types from UI/analytics. Unsupported or unauthorized metrics stay absent; absence is never a zero measurement.
+Feature 2 implements `SensorProvider` with real Presage and explicit mock adapters. Feature 6 adds native and explicit mock `ContextProvider` adapters. Later services add `ReasoningProvider`, `EmbeddingProvider`, and `VoiceProvider` with deterministic mock implementations and failure tests. Adapters normalize vendor responses and hide vendor types from UI/analytics. Unsupported or unauthorized metrics stay absent; absence is never a zero measurement.
 
 Native sensing runs in a main-owned utility process, keeping blocking native startup and raw frames outside main and renderer. Main owns a session/generation controller: concurrent starts are bounded, canceled permission requests cannot later start capture, late events are ignored, and failed teardown blocks replacement capture. Native stopAsync/destroy is awaited with a bounded kill fallback. Stop, document reload, renderer crash, window close, and quit release the worker; hash navigation preserves the session. React subscribes once across routes and shows a persistent status/Stop control.
 
@@ -151,3 +151,9 @@ Authenticated API batches insert measurements and recalculate touched 30-second 
 ## Feature 5 timeline
 
 A named validated history IPC capability connects the renderer timeline to private main transport and authenticated `GET /timeline`. The API binds reads to its configured owner/source and the database uses a read-only repeatable-read transaction. Per-session 30-second means/min–max trends remain separate from exact activity changes and signal gaps; selected periods query raw observations again for correctly weighted statistics. Explicit timezone calendar boundaries handle DST. Display caps are disclosed and exact summaries remain available; missing data never becomes zero. Migration 2 adds nullable measurement activity and a scoped time index. Recorded manual choice is metadata on opted-in observations, with OS classification and interval storage deferred to Feature 6. See [Today timeline design and validation](TIMELINE.md).
+
+## Feature 6 context intervals
+
+Desktop context runs independently in an isolated utility process and is off on launch. Main owns its lifecycle, app/switch/idle/session state, title/focus opt-ins and manual activity override. Capture stops on lock, sleep, reload, renderer crash, close and quit. The classifier is pure and conservative; missing app evidence stays absent. No DOM or screen content is read.
+
+Migration 3 adds context sessions and immutable intervals with owner/source/origin checks and 30-second maximum bounds. The authenticated API supplies owner identity, rejects overlap/changed payloads, and shares the ingestion/deletion transaction lock and replay watermark. A bounded in-memory context queue reuses measurement transport without converting context into sensor readings. Timeline returns separately clipped context in its read snapshot, including context-only periods. Temporal owner/source/overlap connects context to physiology; scalar epoch context IDs remain nullable rather than flattening multiple contexts. Export and delete cover both histories. See [desktop context](DESKTOP_CONTEXT.md) for permissions, platform coverage and verification.

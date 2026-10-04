@@ -12,7 +12,7 @@ Activity occupies its own band above three aligned physiological tracks: pulse (
 
 Trends break across missing readings, withheld metrics and sensing sessions. Gray bands indicate absent saved seconds **between observations within the selected range and same session**; amber bands indicate recorded observations with all physiological metrics withheld. A partially missing metric is blank on that metric's track. Space outside recorded spans has no saved observations; it is not automatically classified as a sensor failure. Missing history can reflect sensing off, saving off, or a connection interruption, and the chart does not guess the cause. Gap details never extrapolate beyond the observations available inside a query.
 
-Activity bands come from manually selected labels attached to saved observations. Unlabeled older history stays **Activity not recorded**. Dashed markers indicate contiguous recorded label changes. Application, idle, window-title, and automatic activity detection remain off pending Feature 6. A sensing session is not treated as a focus session.
+Activity bands come from manually selected labels attached to saved observations. Unlabeled older history stays **Activity not recorded**. Dashed markers indicate contiguous recorded label changes. Feature 6 adds the independent Desktop row for application, idle, optional titles and conservative activity estimates. A sensing session is not treated as a focus session.
 
 ## Selection
 
@@ -27,7 +27,7 @@ Loading, missing configuration, authentication failure, unavailable storage, and
 
 ## Persistence and query contract
 
-Migration **2** adds an optional fixed activity label to `measurements` and a user/source/time index. Existing rows remain null; epoch context columns remain deferred. Run `pnpm db:migrate` on an existing installation before using the new build. `/health` now requires migration 2 and the actual measurement hypertable.
+Migration **2** adds an optional fixed activity label to `measurements` and a user/source/time index. Existing rows remain null; epoch context columns remain deferred. Run `pnpm db:migrate` on an existing installation before using the new build. `/health` now requires migration 3 and the actual measurement hypertable.
 
 Live selection updates main through a named validated IPC operation. Main stamps the label only on new opted-in measurements. A label change neither retroactively changes a saved observation nor queues the currently displayed reading again. Retries preserve the original label with the event ID. The current choice survives routes and stop/restart, and clears with reload, renderer crash or window close. Export includes recorded labels; deletion removes them with the measurements.
 
@@ -48,3 +48,9 @@ The repository queries parameterized SQL in one read-only repeatable-read transa
 - [PostgreSQL date_bin and timestamp functions](https://www.postgresql.org/docs/16/functions-datetime.html)
 - [PostgreSQL lag and window functions](https://www.postgresql.org/docs/current/functions-window.html)
 - [React effect cleanup and asynchronous requests](https://react.dev/reference/react/useEffect)
+
+## Desktop context overlay (Feature 6)
+
+The **Desktop** row shows independent context intervals on the same axis as physiology, with source/owner/time scope and missing observations preserved. Changes in application, activity, optional title, idle and focus are marked; periodic 30-second chunk boundaries are not changes. Context-only periods display the chart with empty physiological metrics. Selected-period details show app, optional title, confidence/reason, manual selection and idle/focus/session/switch metadata, clipped to the requested bounds.
+
+Migration 3 adds separate context sessions and intervals. Timeline reads at most 3,000 intervals in its existing repeatable-read transaction and sets `limited` when details exceed the cap. Independent context sessions never inflate sensing-session counts or relabel measurements. Captured context and physiology correlate through owner, selected source and time overlap. The native provider records `live`; test context remains `mock`. See [desktop context](DESKTOP_CONTEXT.md).

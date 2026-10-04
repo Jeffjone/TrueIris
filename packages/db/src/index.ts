@@ -11,6 +11,9 @@ import {
   type TimelineData,
   type IngestionAck,
 } from '@trueiris/schemas';
+import { insertContext, exportContext, ContextConflict } from './context';
+export { ContextConflict } from './context';
+import type { ContextInterval } from '@trueiris/schemas';
 import { queryTimeline } from './timeline';
 export { migrate } from './migration';
 
@@ -103,6 +106,14 @@ export interface MeasurementStore {
     userId: string,
     cursor?: string,
   ): Promise<{ measurements: Measurement[]; next: string | null }>;
+  ingestContext(
+    userId: string,
+    intervals: ContextInterval[],
+  ): Promise<IngestionAck>;
+  exportContextPage(
+    userId: string,
+    cursor?: string,
+  ): Promise<{ intervals: ContextInterval[]; next: string | null }>;
   deleteData(userId: string): Promise<void>;
   close(): Promise<void>;
 }
@@ -116,7 +127,7 @@ export class TigerStore implements MeasurementStore {
   async health() {
     try {
       const result = await this.pool
-        .query(`SELECT EXISTS (SELECT 1 FROM trueiris_migrations WHERE version = 2) AS ready,
+        .query(`SELECT EXISTS (SELECT 1 FROM trueiris_migrations WHERE version = 3) AS ready,
         EXISTS (SELECT 1 FROM timescaledb_information.hypertables WHERE hypertable_name = 'measurements' AND hypertable_schema = 'public') AS hypertable`);
       return (
         result.rows[0]?.ready === true && result.rows[0]?.hypertable === true
@@ -268,15 +279,37 @@ export class TigerStore implements MeasurementStore {
           : null,
     };
   }
+  async ingestContext(userId: string, intervals: ContextInterval[]) {
+    try {
+      return await this.transaction(userId, (client) =>
+        insertContext(client, userId, intervals),
+      );
+    } catch (error) {
+      if (error instanceof ContextConflict)
+        throw new SessionConflict(
+          'Context ownership, provenance or bounds conflict',
+        );
+      throw error;
+    }
+  }
+  async exportContextPage(userId: string, cursor?: string) {
+    return exportContext(this.pool, userId, cursor);
+  }
   async deleteData(userId: string) {
     await this.transaction(userId, async (client) => {
       await client.query(
-        "UPDATE users SET deleted_before=date_trunc('second',clock_timestamp()) WHERE id=$1",
+        'UPDATE users SET deleted_before=clock_timestamp() WHERE id=$1',
         [userId],
       );
       await client.query('DELETE FROM epochs WHERE user_id=$1', [userId]);
       await client.query('DELETE FROM measurements WHERE user_id=$1', [userId]);
       await client.query('DELETE FROM sessions WHERE user_id=$1', [userId]);
+      await client.query('DELETE FROM context_intervals WHERE user_id=$1', [
+        userId,
+      ]);
+      await client.query('DELETE FROM context_sessions WHERE user_id=$1', [
+        userId,
+      ]);
     });
   }
   async close() {

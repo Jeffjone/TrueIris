@@ -9,7 +9,7 @@ Complete one feature, validate, review the diff, update documentation, commit, p
 | P0       | Live UI (completed)           | Dominant pulse; breathing/HRV when available; confidence; session/context; reliable reactive updates                                                      |
 | P0       | Tiger persistence (completed) | Authenticated scoped ingestion; bounded batch/retry; idempotency; timestamp tests; epoch computation; migrations                                          |
 | P0       | Timeline (completed)          | Trends/context/gaps; period selection; no invented readings; timezone handling                                                                            |
-| P0       | Context engine                | Supported foreground app/idle provider; consent; interval segmentation; manual override; unsupported-platform fallback                                    |
+| P0       | Context engine (completed)    | Supported foreground app/idle provider; consent; interval segmentation; manual override; unsupported-platform fallback                                    |
 | P0       | Personal baselines            | Activity/time-specific comparisons; minimum coverage/history; no medical thresholds; source-aware statistics                                              |
 | P0       | Gemini agent                  | Allowlisted Zod tools, scoped SQL, bounded multi-step calls; every numeric claim backed by evidence                                                       |
 | P0       | Explain last 30 minutes       | Metrics/context/baseline retrieval; narrative + evidence cards + timeline highlight; missing-history fallback                                             |
@@ -55,3 +55,7 @@ Authenticated ingestion persists UTC measurements to a Timescale hypertable and 
 ## Feature 5 verification
 
 Today shows saved activity periods, pulse/respiration/HRV trends, recorded manual context changes and signal gaps. Queries and display keep live/mock/demo-seed sources separate, honor local-day/DST boundaries, and expose exact selected-period evidence. Keyboard, drag and accessible period controls support selection and zoom. Unit/API tests, built desktop integration, real scoped Timescale SQL (including display limits), and built desktop → Tiger Data → timeline verification cover the feature. Automatic application detection remains off until Feature 6. See [timeline behavior](TIMELINE.md).
+
+## Feature 6 verification
+
+Desktop context adds explicit independent capture, foreground application/switch/idle/session state, opt-in titles, manual override and focus state. Conservative rules return activity/confidence/reason; unknown apps are low confidence and missing observations remain gaps. Immutable intervals are consent-scoped and persisted through the existing private pipeline. Timeline, context export and full-history deletion expose the evidence and controls. Validation includes classifier/lifecycle/contracts/API/queue tests, built mock desktop controls and context-only history, real scoped Timescale ownership/overlap/retry/pagination/clipping/deletion checks, and built desktop → Tiger Data → context overlay verification. Built native app detection and lock cleanup are verified on macOS; Windows/X11 native smoke checks remain platform-specific. See [desktop context](DESKTOP_CONTEXT.md).

@@ -36,6 +36,9 @@ test('built desktop saves labeled mock measurements and epochs through the real 
     await page
       .getByRole('button', { name: 'Enable saving', exact: true })
       .click();
+    await page
+      .getByRole('button', { name: 'Start desktop context', exact: true })
+      .click();
     await page.getByLabel('Sensor provider').selectOption('mock');
     await page
       .getByRole('button', { name: 'Start mock sensor', exact: true })
@@ -49,6 +52,24 @@ test('built desktop saves labeled mock measurements and epochs through the real 
         { timeout: 15_000 },
       )
       .toBeGreaterThan(0);
+    await expect
+      .poll(
+        async () => (await store.exportContextPage(userId)).intervals.length,
+        { timeout: 15_000 },
+      )
+      .toBeGreaterThan(0);
+    const desktopContexts = await store.exportContextPage(userId);
+    expect(
+      desktopContexts.intervals.every(
+        (i) =>
+          i.source === 'mock' &&
+          i.manualActivity === 'Coding' &&
+          i.windowTitle === null,
+      ),
+    ).toBe(true);
+    await page
+      .getByRole('button', { name: 'Stop desktop context', exact: true })
+      .click();
     await page
       .getByRole('button', { name: 'Stop saving', exact: true })
       .click();
@@ -91,7 +112,7 @@ test('built desktop saves labeled mock measurements and epochs through the real 
     await page.getByLabel('Display timezone').selectOption('UTC');
     await expect(
       page.getByRole('heading', {
-        name: 'No saved live readings in this period.',
+        name: 'No saved live observations in this period.',
       }),
     ).toBeVisible();
     await page.getByLabel('History source').selectOption('mock');
@@ -99,6 +120,9 @@ test('built desktop saves labeled mock measurements and epochs through the real 
       name: 'Today timeline chart',
     });
     await expect(chart).toBeVisible();
+    await expect(
+      page.getByTestId('desktop-context-band').first(),
+    ).toBeVisible();
     await chart.focus();
     await page.keyboard.press('Enter');
     await expect(

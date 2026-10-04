@@ -9,6 +9,9 @@ import {
   ingestionAckSchema,
   timelineQuerySchema,
   timelineDataSchema,
+  contextBatchSchema,
+  contextCursorSchema,
+  contextExportPageSchema,
 } from '@trueiris/schemas';
 import { loggerOptions } from '@trueiris/shared/logging';
 import { SessionConflict, type MeasurementStore } from '@trueiris/db';
@@ -91,6 +94,43 @@ export function buildApp(logLevel = 'info', options: ApiOptions = {}) {
         return reply
           .code(503)
           .send({ error: 'Storage is temporarily unavailable' });
+      }
+    });
+    privateApp.post('/context/batch', async (request, reply) => {
+      const parsed = contextBatchSchema.safeParse(request.body);
+      if (
+        !parsed.success ||
+        parsed.data.intervals.some(
+          (i) => Date.parse(i.end) > Date.now() + 60_000,
+        )
+      )
+        return reply.code(400).send({ error: 'Invalid context batch' });
+      try {
+        return ingestionAckSchema.parse(
+          await store!.ingestContext(userId!, parsed.data.intervals),
+        );
+      } catch (error) {
+        return reply.code(error instanceof SessionConflict ? 409 : 503).send({
+          error:
+            'Context storage is unavailable or conflicts with saved history',
+        });
+      }
+    });
+    privateApp.get('/context/export', async (request, reply) => {
+      const query = z
+        .object({ cursor: contextCursorSchema.optional() })
+        .strict()
+        .safeParse(request.query);
+      if (!query.success)
+        return reply
+          .code(400)
+          .send({ error: 'Invalid context export request' });
+      try {
+        return contextExportPageSchema.parse(
+          await store!.exportContextPage(userId!, query.data.cursor),
+        );
+      } catch {
+        return reply.code(503).send({ error: 'Context export is unavailable' });
       }
     });
     privateApp.get('/timeline', async (request, reply) => {

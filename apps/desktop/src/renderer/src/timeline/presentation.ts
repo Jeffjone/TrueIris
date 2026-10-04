@@ -109,3 +109,25 @@ export function nearestPoint(data: TimelineData, time: number) {
     null,
   );
 }
+
+/** Chunk boundaries are not activity/application changes; gaps break continuity. */
+export function desktopChanges(data: TimelineData) {
+  const previous = new Map<
+    string,
+    NonNullable<TimelineData['contexts']>[number]
+  >();
+  return (data.contexts ?? []).filter((current) => {
+    const last = previous.get(current.sessionId);
+    previous.set(current.sessionId, current);
+    return (
+      last &&
+      last.end === current.start &&
+      (last.application?.id !== current.application?.id ||
+        last.windowTitle !== current.windowTitle ||
+        last.classification?.activity !== current.classification?.activity ||
+        last.manualActivity !== current.manualActivity ||
+        last.idle !== current.idle ||
+        last.focusMode !== current.focusMode)
+    );
+  });
+}

@@ -1,15 +1,9 @@
 import { z } from 'zod';
 import { dataSourceSchema } from './reading';
 
-export const activitySchema = z.enum([
-  'Coding',
-  'Studying',
-  'Reading',
-  'Meeting',
-  'Break',
-  'Other',
-]);
-export type RecordedActivity = z.infer<typeof activitySchema>;
+import { activitySchema } from './activity';
+export { activitySchema, type RecordedActivity } from './activity';
+import { timelineContextSchema } from './context';
 export const timelineQuerySchema = z
   .object({
     start: z.iso.datetime(),
@@ -70,6 +64,7 @@ export const timelineDataSchema = z
     points: z.array(timelinePointSchema).max(6000),
     activities: z.array(activityPeriodSchema).max(3000),
     gaps: z.array(signalGapSchema).max(3000),
+    contexts: z.array(timelineContextSchema).max(3000).optional(),
     summary: z
       .object({
         count: z.number().int().nonnegative(),

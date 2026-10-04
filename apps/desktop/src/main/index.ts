@@ -4,6 +4,7 @@ import {
   BrowserWindow,
   ipcMain,
   session,
+  powerMonitor,
   systemPreferences,
   utilityProcess,
   type IpcMainInvokeEvent,
@@ -11,6 +12,7 @@ import {
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
+  CONTEXT_CHANNELS,
   STATUS_CHANNEL,
   SENSOR_CHANNELS,
   STORAGE_CHANNELS,
@@ -24,6 +26,7 @@ import {
 import { createLogger } from '@trueiris/shared/logging';
 import { getDesktopStatus } from './status';
 import {
+  contextOptionsSchema,
   activitySchema,
   timelineQuerySchema,
   type RecordedActivity,
@@ -38,6 +41,9 @@ import {
 } from './storage/queue';
 import { exportMeasurements } from './storage/files';
 import { getTimeline } from './timeline';
+import { ContextController } from './context/controller';
+import { NativeContextProvider, MockContextProvider } from './context/provider';
+import { createContextQueue } from './context/queue';
 import { MockSensorProvider } from './sensor/mock';
 import { PresageSensorProvider } from './sensor/presage';
 
@@ -47,10 +53,67 @@ const logger = createLogger('trueiris-desktop', env.LOG_LEVEL);
 const directory = dirname(fileURLToPath(import.meta.url));
 let mainWindow: BrowserWindow | null = null;
 let sensor: SensorController;
+let context: ContextController;
 const storage = new MeasurementQueue(
   storageConfigured(env.TRUEIRIS_API_URL, env.TRUEIRIS_INGEST_TOKEN),
   createBatchSender(env.TRUEIRIS_API_URL, env.TRUEIRIS_INGEST_TOKEN),
 );
+const contextStorage = createContextQueue(
+  env.TRUEIRIS_API_URL,
+  env.TRUEIRIS_INGEST_TOKEN,
+  storageConfigured(env.TRUEIRIS_API_URL, env.TRUEIRIS_INGEST_TOKEN),
+);
+function storageStatus() {
+  const a = storage.get(),
+    b = contextStorage.get();
+  const priority = { off: 0, idle: 1, saving: 2, retrying: 3, blocked: 4 };
+  return {
+    ...a,
+    state: priority[a.state] >= priority[b.state] ? a.state : b.state,
+    queued: a.queued + b.queued,
+    saved: a.saved + b.saved,
+    dropped: a.dropped + b.dropped,
+    lastSavedAt:
+      [a.lastSavedAt, b.lastSavedAt]
+        .filter((value): value is string => value !== null)
+        .sort()
+        .at(-1) ?? null,
+  };
+}
+async function enableSaving(enabled: boolean) {
+  context.setSaving(enabled);
+  await Promise.all([
+    storage.setEnabled(enabled),
+    contextStorage.setEnabled(enabled),
+  ]);
+  return storageStatus();
+}
+function spawnContext() {
+  const workerEnvironment: NodeJS.ProcessEnv = {};
+  for (const name of [
+    'PATH',
+    'HOME',
+    'TMPDIR',
+    'TEMP',
+    'TMP',
+    'USERPROFILE',
+    'SYSTEMROOT',
+    'WINDIR',
+    'DISPLAY',
+    'XDG_SESSION_TYPE',
+    'XDG_RUNTIME_DIR',
+    'WAYLAND_DISPLAY',
+  ])
+    if (process.env[name]) workerEnvironment[name] = process.env[name];
+  const child = utilityProcess.fork(join(directory, 'context-worker.js'), [], {
+    env: workerEnvironment,
+    stdio: 'pipe',
+    serviceName: 'TrueIris desktop context',
+  });
+  child.stdout?.resume();
+  child.stderr?.resume();
+  return child;
+}
 let managingData = false;
 let activity: RecordedActivity | null = null;
 let exportAbort: AbortController | null = null;
@@ -131,11 +194,15 @@ function createWindow() {
   window.webContents.on('render-process-gone', (_event, details) => {
     logger.error({ event: 'renderer_stopped', reason: details.reason });
     activity = null;
+    context?.setManual(null);
+    context?.stop();
     void sensor.stop();
   });
   window.webContents.on('did-start-navigation', (details) => {
     if (details.isMainFrame && !details.isSameDocument) {
       activity = null;
+      context?.setManual(null);
+      context?.stop();
       void sensor.stop();
     }
   });
@@ -146,6 +213,8 @@ function createWindow() {
   window.once('closed', () => {
     mainWindow = null;
     activity = null;
+    context?.setManual(null);
+    context?.stop();
     void sensor.stop();
   });
   if (!app.isPackaged && process.env.ELECTRON_RENDERER_URL) {
@@ -158,6 +227,51 @@ function createWindow() {
 void app
   .whenReady()
   .then(() => {
+    context = new ContextController(
+      env.TRUEIRIS_CONTEXT_PROVIDER,
+      () =>
+        env.TRUEIRIS_CONTEXT_PROVIDER === 'mock'
+          ? new MockContextProvider()
+          : new NativeContextProvider(spawnContext()),
+      () =>
+        env.TRUEIRIS_CONTEXT_PROVIDER === 'mock'
+          ? 0
+          : powerMonitor.getSystemIdleTime(),
+      (snapshot) => {
+        if (mainWindow && !mainWindow.webContents.isDestroyed())
+          mainWindow.webContents.send(CONTEXT_CHANNELS.update, snapshot);
+      },
+      (interval) => contextStorage.enqueue(interval),
+      () => contextStorage.get(),
+    );
+    powerMonitor.on('suspend', () => context.stop());
+    powerMonitor.on('lock-screen', () => context.stop());
+    ipcMain.handle(CONTEXT_CHANNELS.get, (event) => {
+      assertTrusted(event);
+      return context.get();
+    });
+    ipcMain.handle(CONTEXT_CHANNELS.start, (event) => {
+      assertTrusted(event);
+      if (managingData) throw new Error('Data action in progress');
+      return context.start();
+    });
+    ipcMain.handle(CONTEXT_CHANNELS.stop, (event) => {
+      assertTrusted(event);
+      return context.stop();
+    });
+    ipcMain.handle(CONTEXT_CHANNELS.options, (event, input: unknown) => {
+      assertTrusted(event);
+      const options = contextOptionsSchema.parse(input);
+      if (
+        options.windowTitles &&
+        !context.get().options.windowTitles &&
+        env.TRUEIRIS_CONTEXT_PROVIDER === 'desktop' &&
+        process.platform === 'darwin'
+      )
+        systemPreferences.isTrustedAccessibilityClient(true);
+      context.setOptions(options);
+      return context.get();
+    });
     sensor = new SensorController(
       env.TRUEIRIS_SENSOR_PROVIDER,
       async (kind) => {
@@ -241,37 +355,47 @@ void app
     ipcMain.handle(ACTIVITY_CHANNEL, (event, input: unknown) => {
       assertTrusted(event);
       activity = activitySchema.nullable().parse(input);
+      context.setManual(activity);
       return activity;
     });
     ipcMain.handle(STORAGE_CHANNELS.get, (event) => {
       assertTrusted(event);
-      return storage.get();
+      return storageStatus();
     });
     ipcMain.handle(STORAGE_CHANNELS.enable, (event, enabled: unknown) => {
       assertTrusted(event);
       if (typeof enabled !== 'boolean' || managingData)
         throw new Error('Invalid storage action');
-      return storage.setEnabled(enabled);
+      return enableSaving(enabled);
     });
-    ipcMain.handle(STORAGE_CHANNELS.export, async (event) => {
+    const exportHistory = async (
+      event: IpcMainInvokeEvent,
+      kind: 'measurements' | 'context',
+    ) => {
       assertTrusted(event);
       if (managingData || !mainWindow || !storage.get().configured)
         return 'failed';
       managingData = true;
       try {
         const selection = await dialog.showSaveDialog(mainWindow, {
-          title: 'Export measurements',
-          defaultPath: 'trueiris-measurements.jsonl',
+          title:
+            kind === 'context'
+              ? 'Export desktop context'
+              : 'Export measurements',
+          defaultPath: `trueiris-${kind}.jsonl`,
           filters: [{ name: 'JSON Lines', extensions: ['jsonl'] }],
         });
         if (selection.canceled || !selection.filePath) return 'cancelled';
-        await storage.setEnabled(false);
+        await enableSaving(false);
         exportAbort = new AbortController();
         exportOperation = exportMeasurements(
           env.TRUEIRIS_API_URL,
           env.TRUEIRIS_INGEST_TOKEN!,
           selection.filePath,
-          { signal: exportAbort.signal },
+          {
+            signal: exportAbort.signal,
+            ...(kind === 'context' ? { kind: 'context' as const } : {}),
+          },
         );
         await exportOperation;
         return 'saved';
@@ -282,7 +406,13 @@ void app
         exportOperation = null;
         managingData = false;
       }
-    });
+    };
+    ipcMain.handle(STORAGE_CHANNELS.export, (event) =>
+      exportHistory(event, 'measurements'),
+    );
+    ipcMain.handle(STORAGE_CHANNELS.exportContext, (event) =>
+      exportHistory(event, 'context'),
+    );
     ipcMain.handle(STORAGE_CHANNELS.delete, async (event) => {
       assertTrusted(event);
       if (managingData || !mainWindow || !storage.get().configured)
@@ -291,8 +421,9 @@ void app
       try {
         const confirmation = await dialog.showMessageBox(mainWindow, {
           type: 'warning',
-          title: 'Delete measurement history?',
-          message: 'Delete all your saved measurements and aggregates?',
+          title: 'Delete saved history?',
+          message:
+            'Delete all your saved measurements, aggregates and desktop context?',
           detail:
             'This also stops sensing and saving. Deletion cannot be undone.',
           buttons: ['Cancel', 'Delete history'],
@@ -301,7 +432,8 @@ void app
         });
         if (confirmation.response !== 1) return 'cancelled';
         await sensor.stop();
-        await storage.setEnabled(false);
+        context.stop();
+        await enableSaving(false);
         const response = await fetch(new URL('/data', env.TRUEIRIS_API_URL), {
           method: 'DELETE',
           headers: { authorization: `Bearer ${env.TRUEIRIS_INGEST_TOKEN!}` },
@@ -336,10 +468,15 @@ app.on('before-quit', (event) => {
   event.preventDefault();
   quitting = true;
   exportAbort?.abort();
+  context?.stop();
   void sensor
     .dispose()
     .then(async () => {
-      await Promise.allSettled([storage.dispose(), exportOperation]);
+      await Promise.allSettled([
+        storage.dispose(),
+        contextStorage.dispose(),
+        exportOperation,
+      ]);
     })
     .finally(() => app.quit());
 });

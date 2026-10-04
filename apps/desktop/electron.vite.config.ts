@@ -8,6 +8,7 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve('src/main/index.ts'),
+          'context-worker': resolve('src/main/context/context-worker.ts'),
           'presage-worker': resolve('src/main/sensor/presage-worker.ts'),
         },
       },

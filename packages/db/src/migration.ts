@@ -76,6 +76,27 @@ export async function migrate(pool: Pool) {
         'INSERT INTO trueiris_migrations (version) VALUES (2)',
       );
     }
+    const context = await client.query(
+      'SELECT version FROM trueiris_migrations WHERE version = 3',
+    );
+    if (!context.rowCount) {
+      await client.query(`
+        CREATE TABLE context_sessions (
+          id uuid PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id),
+          source text NOT NULL CHECK (source IN ('live','mock','demo_seed')),
+          started_at timestamptz NOT NULL, UNIQUE(id,user_id,source)
+        );
+        CREATE TABLE context_intervals (
+          id uuid PRIMARY KEY, user_id uuid NOT NULL, session_id uuid NOT NULL, source text NOT NULL,
+          start_time timestamptz NOT NULL, end_time timestamptz NOT NULL, payload jsonb NOT NULL,
+          CHECK(end_time>start_time AND end_time-start_time<=interval '30 seconds'),
+          FOREIGN KEY(session_id,user_id,source) REFERENCES context_sessions(id,user_id,source)
+        );
+        CREATE INDEX context_user_source_time ON context_intervals(user_id,source,start_time);
+        CREATE INDEX context_user_session_time ON context_intervals(user_id,session_id,start_time);
+        INSERT INTO trueiris_migrations(version) VALUES(3);
+      `);
+    }
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');

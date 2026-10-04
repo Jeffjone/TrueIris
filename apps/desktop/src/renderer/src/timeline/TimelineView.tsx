@@ -82,7 +82,8 @@ function PeriodDetails({ data, zone }: { data: TimelineData; zone: string }) {
         <div>
           <h3>Activity & context</h3>
           <p className="muted">
-            Manually selected activity. Application detection is off.
+            Manual labels attached to sensing readings. Desktop observations
+            appear separately below.
           </p>
           {data.activities.length === 0 ? (
             <p>No recorded activity in this period.</p>
@@ -109,6 +110,42 @@ function PeriodDetails({ data, zone }: { data: TimelineData; zone: string }) {
           </p>
         </div>
         <div>
+          <h3>Desktop observations</h3>
+          {(data.contexts ?? []).length === 0 ? (
+            <p>No saved desktop context in this period.</p>
+          ) : (
+            <ul>
+              {data.contexts!.slice(0, 12).map((p) => (
+                <li key={p.id}>
+                  <strong>
+                    {p.application?.name ?? 'Application unavailable'} ·{' '}
+                    {p.classification?.activity ?? 'Activity unavailable'}
+                  </strong>
+                  <span>
+                    {timeLabel(p.start, zone)} – {timeLabel(p.end, zone)} ·{' '}
+                    {p.classification
+                      ? `${Math.round(p.classification.confidence * 100)}% confidence`
+                      : ''}
+                    {p.manualActivity ? ' · Selected by you' : ''}
+                    {p.focusMode ? ' · Focus mode' : ''}
+                    {p.idle ? ' · Idle' : ''}
+                  </span>
+                  {p.windowTitle && <span>{p.windowTitle}</span>}
+                  <span>
+                    {p.classification?.reason} Idle {p.idleSeconds}s · context
+                    session {p.sessionSeconds}s · {p.applicationSwitches}{' '}
+                    application switches
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {(data.contexts?.length ?? 0) > 12 && (
+            <p className="muted">
+              {data.contexts!.length - 12} more intervals. Select a shorter
+              range to explore.
+            </p>
+          )}
           <h3>Signal gaps</h3>
           <p className="muted">
             Blank chart regions have no saved observations. Each sensing session
@@ -244,7 +281,7 @@ function TimelineDay({
       </div>
       <p className="timeline-provenance">
         {source === 'live'
-          ? 'LIVE · PRESAGE'
+          ? 'LIVE · PRESAGE & DESKTOP'
           : source === 'mock'
             ? 'SIMULATED · MOCK HISTORY'
             : 'SAMPLE DATA · DEMO SEED'}
@@ -254,7 +291,7 @@ function TimelineDay({
       </p>
       {!data ? (
         <Notice result={result} />
-      ) : data.summary.count === 0 ? (
+      ) : data.summary.count === 0 && !data.contexts?.length ? (
         <section className="timeline-notice">
           <h2>
             No saved{' '}
@@ -263,12 +300,12 @@ function TimelineDay({
               : source === 'mock'
                 ? 'mock'
                 : 'demo seed'}{' '}
-            readings in this period.
+            observations in this period.
           </h2>
           <p className="muted">
-            Enable saving in Settings and start a sensor to build history.
-            Activity labels from Live are included in new readings while saving
-            is on.
+            Enable saving in Settings and start sensing or desktop context to
+            build history. Activity labels from Live are included in new
+            readings while saving is on.
           </p>
           <NavLink className="text-link" to="/live">
             Back to Live →
@@ -280,7 +317,9 @@ function TimelineDay({
             <div className="timeline-chart-heading">
               <h2>{!zoom ? 'Today, so far.' : 'A closer view.'}</h2>
               <span className="muted">
-                {loading ? 'Refreshing…' : 'Saved readings · updates every 15s'}
+                {loading
+                  ? 'Refreshing…'
+                  : 'Saved observations · updates every 15s'}
               </span>
             </div>
             <p className="muted" id="timeline-instructions">
@@ -297,12 +336,13 @@ function TimelineDay({
             <div className="timeline-legend">
               <span className="missing">No saved signal</span>
               <span className="withheld">Values withheld</span>
-              <span className="change">Activity change</span>
+              <span className="change">Activity / desktop change</span>
             </div>
             <p className="muted">
               Trends show 30-second means and min–max ranges on separate scales.
-              Blank regions are unrecorded; gaps and sensing sessions are never
-              joined. Withheld metrics stay empty.
+              The desktop row shows independently captured application and
+              activity context. Blank regions are unrecorded; gaps and sensing
+              sessions are never joined. Withheld metrics stay empty.
             </p>
             <Summary data={data} />
             {data.limited && (
@@ -395,7 +435,8 @@ function TimelineDay({
                   {timeLabel(selection.end, zone)}
                 </p>
                 {details.result?.state === 'ready' ? (
-                  details.result.data.summary.count === 0 ? (
+                  details.result.data.summary.count === 0 &&
+                  !details.result.data.contexts?.length ? (
                     <p>No saved observations in the selected period.</p>
                   ) : (
                     <PeriodDetails data={details.result.data} zone={zone} />

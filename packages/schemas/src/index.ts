@@ -35,3 +35,5 @@ export * from './reading';
 export * from './sensor';
 export * from './storage';
 export * from './timeline';
+
+export * from './context';

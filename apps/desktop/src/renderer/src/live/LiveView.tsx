@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react';
 import type { SensorSnapshot } from '@trueiris/schemas';
+import {
+  ContextPanel,
+  contextLabel,
+  type ContextControls,
+} from '../components/ContextPanel';
 import { SensorPanel } from '../components/SensorPanel';
 import { sensorLabel, sensorMessages, type SensorControls } from '../sensor';
 import {
@@ -41,10 +46,12 @@ function Confidence({
 
 export function LiveView({
   sensor,
+  context,
   activity,
   onActivity,
 }: {
   sensor: SensorControls;
+  context: ContextControls;
   activity: Activity;
   onActivity: (value: Activity) => void;
 }) {
@@ -214,8 +221,17 @@ export function LiveView({
         </div>
         <div>
           <p className="eyebrow">CURRENT APPLICATION</p>
-          <strong data-testid="current-application">Context off</strong>
-          <p className="context-caption">Desktop detection is not connected</p>
+          <strong data-testid="current-application">
+            {context.snapshot?.phase === 'running'
+              ? (context.snapshot.application?.name ??
+                'Application unavailable')
+              : 'Context off'}
+          </strong>
+          <p className="context-caption">
+            {context.snapshot?.classification
+              ? `${context.snapshot.classification.activity} · ${Math.round(context.snapshot.classification.confidence * 100)}% confidence`
+              : contextLabel(context.snapshot)}
+          </p>
         </div>
         <div>
           <p className="eyebrow">SESSION DURATION</p>
@@ -237,6 +253,7 @@ export function LiveView({
           </p>
         </div>
       </section>
+      <ContextPanel context={context} />
       <SensorPanel sensor={sensor} />
     </div>
   );

@@ -11,7 +11,7 @@ const store = new TigerStore(env.DATABASE_URL, env.DATABASE_CA_FILE);
 try {
   await migrate(store.pool);
   console.log(
-    'TrueIris migrations through version 2 applied; measurements is a Timescale hypertable.',
+    'TrueIris migrations through version 3 applied; measurements is a Timescale hypertable.',
   );
 } catch {
   console.error(

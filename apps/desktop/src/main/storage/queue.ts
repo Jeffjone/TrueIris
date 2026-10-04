@@ -37,24 +37,23 @@ export interface BatchResponse {
   body?: unknown;
 }
 export type SendBatch = (batch: Measurement[]) => Promise<BatchResponse>;
-const CAPACITY = 300;
-const BATCH_SIZE = 30;
 const MAX_ATTEMPTS = 6;
-export class MeasurementQueue {
-  private pending: Measurement[] = [];
-  private inFlight: Measurement[] = [];
+export class RecordQueue<T> {
+  private pending: T[] = [];
+  private inFlight: T[] = [];
   private operation: Promise<void> | null = null;
   private timer: ReturnType<typeof setInterval>;
   private nextAttempt = 0;
   private attempts = 0;
   private generation = 0;
-  private lastSecond: string | null = null;
   private status: StorageStatus;
   constructor(
     configured: boolean,
-    private readonly send: SendBatch,
+    private readonly send: (batch: T[]) => Promise<BatchResponse>,
     private readonly now = Date.now,
     private readonly random = Math.random,
+    private readonly capacity = 300,
+    private readonly batchSize = 30,
   ) {
     this.status = {
       configured,
@@ -91,14 +90,9 @@ export class MeasurementQueue {
     if (this.operation) await this.operation;
     return this.get();
   }
-  observe(snapshot: SensorSnapshot, activity: RecordedActivity | null = null) {
-    const m = serializeSnapshot(snapshot, randomUUID(), activity);
-    if (!m) return;
-    const key = `${m.sessionId}:${m.timestamp}`;
-    if (key === this.lastSecond) return;
-    this.lastSecond = key;
+  enqueue(m: T) {
     if (!this.status.enabled || this.status.state === 'blocked') return;
-    if (this.get().queued >= CAPACITY) {
+    if (this.get().queued >= this.capacity) {
       this.pending.shift();
       this.status.dropped++;
     }
@@ -113,7 +107,7 @@ export class MeasurementQueue {
     )
       return;
     if (!this.inFlight.length)
-      this.inFlight = this.pending.splice(0, BATCH_SIZE);
+      this.inFlight = this.pending.splice(0, this.batchSize);
     if (!this.inFlight.length) return;
     const generation = this.generation;
     const batch = this.inFlight;
@@ -164,6 +158,17 @@ export class MeasurementQueue {
   async dispose() {
     clearInterval(this.timer);
     await this.setEnabled(false);
+  }
+}
+export class MeasurementQueue extends RecordQueue<Measurement> {
+  private lastSecond: string | null = null;
+  observe(snapshot: SensorSnapshot, activity: RecordedActivity | null = null) {
+    const m = serializeSnapshot(snapshot, randomUUID(), activity);
+    if (!m) return;
+    const key = `${m.sessionId}:${m.timestamp}`;
+    if (key === this.lastSecond) return;
+    this.lastSecond = key;
+    this.enqueue(m);
   }
 }
 export function createBatchSender(apiUrl: string, token?: string): SendBatch {

@@ -2,6 +2,7 @@ import { memo, useEffect, useRef, useState, type PointerEvent } from 'react';
 import type { TimelineData } from '@trueiris/schemas';
 import {
   contextChanges,
+  desktopChanges,
   metrics,
   metricSegments,
   nearestPoint,
@@ -235,6 +236,48 @@ const TimelineTracks = memo(function TimelineTracks({
           )}
           <desc>Period {i + 1}</desc>
         </g>
+      ))}
+      <text x={8} y={61}>
+        Desktop
+      </text>
+      {(data.contexts ?? []).map((p) => (
+        <rect
+          key={p.id}
+          data-testid="desktop-context-band"
+          x={x(Date.parse(p.start))}
+          y={49}
+          width={Math.max(0.6, x(Date.parse(p.end)) - x(Date.parse(p.start)))}
+          height={13}
+          rx={2}
+          fill={
+            p.classification ? colors[p.classification.activity] : '#dfe2d9'
+          }
+        >
+          <title>
+            {p.application?.name ?? 'Application unavailable'} ·{' '}
+            {p.classification?.activity ?? 'Activity unavailable'}
+            {p.focusMode ? ' · Focus mode' : ''}
+            {p.idle ? ' · Idle' : ''} · {timeLabel(p.start, zone)} –{' '}
+            {timeLabel(p.end, zone)}
+          </title>
+        </rect>
+      ))}
+      {desktopChanges(data).map((p) => (
+        <line
+          key={p.id}
+          data-testid="desktop-context-change"
+          x1={x(Date.parse(p.start))}
+          x2={x(Date.parse(p.start))}
+          y1={49}
+          y2={324}
+          stroke="#527960"
+          strokeDasharray="3 5"
+        >
+          <title>
+            Desktop context changed · {p.application?.name} ·{' '}
+            {timeLabel(p.start, zone)}
+          </title>
+        </line>
       ))}
       {data.gaps.map((g) => (
         <rect

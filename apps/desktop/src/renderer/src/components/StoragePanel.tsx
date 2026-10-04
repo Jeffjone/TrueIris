@@ -35,14 +35,16 @@ export function useStorage() {
       setBusy(false);
     }
   };
-  const manage = async (action: 'export' | 'delete') => {
+  const manage = async (action: 'export' | 'delete' | 'context') => {
     setBusy(true);
     setMessage('');
     try {
       const result =
         action === 'export'
           ? await window.trueiris!.exportData()
-          : await window.trueiris!.deleteData();
+          : action === 'context'
+            ? await window.trueiris!.exportContext()
+            : await window.trueiris!.deleteData();
       setMessage(
         result === 'failed'
           ? 'The data action failed. Check the API connection and retry.'
@@ -74,11 +76,12 @@ export function StoragePanel({ storage }: { storage: StorageControls }) {
   const { status, busy, message } = storage;
   return (
     <section className="settings-surface">
-      <h2>Measurement history</h2>
+      <h2>Saved history</h2>
       <p className="muted">
         Saving is optional and starts off each time you open TrueIris. When
         enabled, normalized measurements and 30-second summaries go to your
-        configured Tiger Data database. Live and mock sources remain labeled.
+        configured Tiger Data database. Desktop context intervals are also saved
+        when their capture is enabled. Live and mock sources remain labeled.
         Camera frames are never saved.
       </p>
       <div className="settings-row">
@@ -103,9 +106,9 @@ export function StoragePanel({ storage }: { storage: StorageControls }) {
         <span>Saved history stays until you delete it</span>
       </div>
       <p className="muted">
-        Stopping saving discards unsent readings. During outages, up to 300
-        readings wait in memory with bounded retries. Closing the app discards
-        the remaining queue.
+        Stopping saving discards unsent records. During outages, up to 300
+        readings and 120 context intervals wait in memory with bounded retries.
+        Closing the app discards the remaining queue.
       </p>
       <p className="muted" data-testid="storage-counts">
         {status?.saved ?? 0} saved this launch · {status?.dropped ?? 0}{' '}
@@ -128,7 +131,18 @@ export function StoragePanel({ storage }: { storage: StorageControls }) {
         these observations.
       </p>
       <div className="settings-row">
-        <span>Remove saved measurements and summaries</span>
+        <span>Export desktop context as JSON Lines</span>
+        <button
+          disabled={busy || !status?.configured}
+          onClick={() => {
+            void storage.manage('context');
+          }}
+        >
+          Export context
+        </button>
+      </div>
+      <div className="settings-row">
+        <span>Remove saved measurements, summaries and desktop context</span>
         <button
           disabled={busy || !status?.configured}
           onClick={() => {
