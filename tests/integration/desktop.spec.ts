@@ -52,6 +52,7 @@ for (const connected of [true, false]) {
           'sendVoiceAudio',
           'finishVoice',
           'onVoice',
+          'reconstructEvents',
           'askIris',
           'cancelIris',
           'getStatus',

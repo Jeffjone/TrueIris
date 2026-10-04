@@ -19,7 +19,11 @@ const actual = new GeminiReasoningProvider(
   env.GEMINI_API_KEY,
   env.GEMINI_MODEL,
 );
-for (const scenario of ['multi_step', 'recent_explanation'] as const) {
+for (const scenario of [
+  'multi_step',
+  'recent_explanation',
+  'reconstruction',
+] as const) {
   let turns = 0,
     providerStatus: number | undefined,
     providerFailure: string | undefined;
@@ -53,6 +57,16 @@ for (const scenario of ['multi_step', 'recent_explanation'] as const) {
   const result = await runAgent({
     request: {
       ...fixtureRequest,
+      ...(scenario === 'reconstruction'
+        ? {
+            question: 'What happened here?',
+            reconstructionRange: {
+              start: new Date(Date.now() - 1800_000).toISOString(),
+              end: new Date(Date.now() - 1000).toISOString(),
+              source: 'mock' as const,
+            },
+          }
+        : {}),
       ...(scenario === 'recent_explanation'
         ? { question: 'Iris, explain the last 30 minutes.' }
         : {}),
@@ -66,7 +80,8 @@ for (const scenario of ['multi_step', 'recent_explanation'] as const) {
   const passed = Boolean(
     result.data &&
     result.data.provider === 'gemini' &&
-    result.data.evidence.length >= 2 &&
+    result.data.evidence.length >= (scenario === 'reconstruction' ? 1 : 2) &&
+    (scenario !== 'reconstruction' || tools.includes('reconstruct_events')) &&
     !result.data.answer.startsWith('Iris could not finish') &&
     result.data.selectedFacts.every((f) =>
       result.data!.evidence.some((e) =>

@@ -17,6 +17,8 @@ import {
 } from '@trueiris/schemas';
 import type { MeasurementStore } from '@trueiris/db';
 import { dayRange } from './time';
+import { reconstructEvents } from './reconstruction';
+import { recentContext } from './recent';
 import { pulseTrajectory } from './trajectory';
 
 const period = z
@@ -27,6 +29,7 @@ const period = z
     'Select at most 26 hours',
   );
 export const toolSchemas = {
+  reconstruct_events: z.object({ range: period }).strict(),
   get_current_state: z.object({}).strict(),
   get_metrics: z.object({ range: period, metric: metricSchema }).strict(),
   get_context: z.object({ range: period }).strict(),
@@ -58,6 +61,8 @@ export const toolSchemas = {
 };
 export type ToolName = keyof typeof toolSchemas;
 const descriptions: Record<ToolName, string> = {
+  reconstruct_events:
+    'Chronological first-party event reconstruction for a selected range: observed foreground apps, manual labels, switches, pulse epochs and baseline comparisons, gaps and uncertainty. Never infers task contents or causes.',
   get_current_state:
     'Current user-supplied local sensing/context status. Stale or different-source readings are withheld. No stored history.',
   get_metrics:
@@ -115,6 +120,7 @@ export async function executeTool(
     tool: name,
     title: (
       {
+        reconstruct_events: 'Recorded events',
         get_current_state: 'Current observations',
         get_metrics: 'Metric summary',
         get_context: 'Desktop context',
@@ -288,6 +294,38 @@ export async function executeTool(
     }
   };
   switch (name) {
+    case 'reconstruct_events': {
+      const range = rangeFor(toolSchemas.reconstruct_events.parse(args).range);
+      const data = await timeline(range);
+      if (
+        data.contexts?.some(
+          (c) =>
+            c.source !== range.source ||
+            c.start < range.start ||
+            c.end > range.end,
+        )
+      )
+        throw new Error('Wrong context scope');
+      const query = baselineQuerySchema.parse({
+        range,
+        context: recentContext(range, request.timezone, data),
+        timezone: request.timezone,
+        lookbackDays: 30,
+      });
+      let baseline: z.infer<typeof baselineDataSchema> | null = null;
+      try {
+        baseline = baselineDataSchema.parse(
+          await store.baselines(userId, query),
+        );
+        if (JSON.stringify(baseline.query) !== JSON.stringify(query))
+          throw new Error('Wrong baseline scope');
+      } catch {
+        baseline = null;
+      }
+      signal.throwIfAborted();
+      return evidenceSchema.parse(reconstructEvents(data, baseline, id));
+    }
+
     case 'get_current_state': {
       const c = request.current;
       fact(

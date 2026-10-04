@@ -16,6 +16,7 @@ import {
   voiceAudioSchema,
   voiceEventSchema,
   voiceSnapshotSchema,
+  reconstructionQuerySchema,
   askQuerySchema,
   agentResultSchema,
   contextSnapshotSchema,
@@ -67,6 +68,13 @@ const bridge: DesktopBridge = {
       ipcRenderer.removeListener(VOICE_CHANNELS.update, receive);
     };
   },
+  reconstructEvents: async (query) =>
+    agentResultSchema.parse(
+      await ipcRenderer.invoke(
+        REASONING_CHANNELS.reconstruct,
+        reconstructionQuerySchema.parse(query),
+      ),
+    ),
   askIris: async (query) =>
     agentResultSchema.parse(
       await ipcRenderer.invoke(

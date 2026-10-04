@@ -13,6 +13,7 @@ import {
   timeLabel,
 } from './presentation';
 import { TimelineChart, type Selection } from './TimelineChart';
+import { ReconstructionPanel } from './ReconstructionPanel';
 import { BaselinePanel } from './BaselinePanel';
 import { useTimeline } from './useTimeline';
 
@@ -453,6 +454,13 @@ function TimelineDay({
               </p>
             )}
           </section>
+          {selectedQuery && (
+            <ReconstructionPanel
+              key={`reconstruct:${revision}:${JSON.stringify(selectedQuery)}`}
+              range={selectedQuery}
+              timezone={zone}
+            />
+          )}
           {selectedQuery && (
             <BaselinePanel
               key={`${revision}:${JSON.stringify(selectedQuery)}`}

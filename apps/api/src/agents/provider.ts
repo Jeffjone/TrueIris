@@ -153,6 +153,7 @@ export class MockReasoningProvider implements ReasoningProvider {
         timezone: askQuerySchema.shape.timezone,
         asOf: z.iso.datetime(),
         explanationRange: timelineQuerySchema.optional(),
+        reconstructionRange: timelineQuerySchema.optional(),
         workflow: z.string().optional(),
         requiredRetrievals: z.array(z.unknown()).optional(),
       })
@@ -195,6 +196,10 @@ export class MockReasoningProvider implements ReasoningProvider {
           parts: required.slice(0, 4).map((step) => ({ functionCall: step })),
         };
       const preferred = evidence.flatMap((e) => {
+        if (e.tool === 'reconstruct_events')
+          return e.facts
+            .filter((f) => !e.limitations.includes(f.id))
+            .slice(0, 8);
         if (e.tool === 'get_context') {
           const app = e.facts.find((f) => f.text.startsWith('You recorded'));
           return [

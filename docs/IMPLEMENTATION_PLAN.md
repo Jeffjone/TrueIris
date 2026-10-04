@@ -75,3 +75,7 @@ The one-click and typed “Iris, explain the last 30 minutes” action pins a so
 ## Feature 12 completed
 
 ElevenLabs realtime STT displays partial/final transcripts and sends committed questions through the existing Gemini tools, then streams the verified cited answer as PCM speech. Main owns authentication and a trusted-frame microphone lease; renderer controls provide listening/reasoning/speaking states, stop/interruption and typed fallback. No raw audio persistence, always-on capture or automatic mock fallback is added. Protocol/provider, owner scope, cancellation/failure, built fake-microphone and live synthetic provider checks cover the loop. Target hardware acceptance remains interactive. See [voice setup and validation](ELEVENLABS_VOICE.md).
+
+## Feature 16 completed
+
+Selected timeline ranges can be reconstructed into timestamped first-party observations and a Gemini-ordered cited narrative. The agent pins selection and source, with explicit ambiguity, gaps and unavailable baseline states. Tests cover privacy, evidence gating, owner/range scope, cancellation and the built desktop. See [event reconstruction](EVENT_RECONSTRUCTION.md).

@@ -4,7 +4,7 @@ import {
   agentResultSchema,
   evidenceSchema,
   respondSchema,
-  recentExplanationRange,
+  requestedExplanationRange,
   timelineDataSchema,
   type TimelineData,
   type TimelineQuery,
@@ -90,7 +90,7 @@ export function assembleAnswer(
       query,
       provider: provider.kind,
       asOf,
-      explanationRange: recentExplanationRange(request, asOf),
+      explanationRange: requestedExplanationRange(request, asOf),
       answer:
         (incomplete ? INCOMPLETE_ANSWER_PREFIX : '') +
         selectedFacts.map((f) => f.text).join('\n\n'),
@@ -111,7 +111,12 @@ export async function runAgent(options: {
   const request = askRequestSchema.parse(options.request);
   if (!provider.configured) return { state: 'not_configured', data: null };
   const asOf = new Date((options.now ?? Date.now)()).toISOString();
-  const explanationRange = recentExplanationRange(request, asOf);
+  const explanationRange = requestedExplanationRange(request, asOf);
+  if (
+    request.reconstructionRange &&
+    Date.parse(request.reconstructionRange.end) > Date.parse(asOf) + 1000
+  )
+    return { state: 'unavailable', data: null };
   let recentData: TimelineData | null = null;
   const completed: Retrieval[] = [];
   // Share one snapshot across metrics/context and one baseline query across metrics, only for this request.
@@ -155,9 +160,21 @@ export async function runAgent(options: {
       }
     : store;
   const plan = () =>
-    explanationRange
-      ? recentRetrievals(explanationRange, request.timezone, recentData)
-      : [];
+    request.reconstructionRange
+      ? [
+          {
+            name: 'reconstruct_events' as const,
+            args: {
+              range: {
+                start: request.reconstructionRange.start,
+                end: request.reconstructionRange.end,
+              },
+            },
+          },
+        ]
+      : explanationRange
+        ? recentRetrievals(explanationRange, request.timezone, recentData)
+        : [];
   const contents: ConversationContent[] = [
     {
       role: 'user',
@@ -171,8 +188,12 @@ export async function runAgent(options: {
             ...(explanationRange
               ? {
                   explanationRange,
-                  workflow:
-                    'Explain this exact last-30-minute window. Start with get_context and get_metrics (all three metrics). Then use the required baseline context from the response guidance and retrieve earlier historical sessions. Complete every required retrieval before respond, even when evidence is empty/unavailable. Choose a coherent concise narrative: application coverage, pulse changes versus personal baseline, breathing/HRV, then earlier activity matches. Cite coverage/unknown time and limitations. No diagnosis, causal or semantic similarity claims.',
+                  ...(request.reconstructionRange
+                    ? { reconstructionRange: request.reconstructionRange }
+                    : {}),
+                  workflow: request.reconstructionRange
+                    ? 'Reconstruct this exact selected period. Call reconstruct_events, then respond with a concise chronological narrative drawn only from its existing factIds. Include uncertainty; do not invent task contents, intentions, opening times or causes.'
+                    : 'Explain this exact last-30-minute window. Start with get_context and get_metrics (all three metrics). Then use the required baseline context from the response guidance and retrieve earlier historical sessions. Complete every required retrieval before respond, even when evidence is empty/unavailable. Choose a coherent concise narrative: application coverage, pulse changes versus personal baseline, breathing/HRV, then earlier activity matches. Cite coverage/unknown time and limitations. No diagnosis, causal or semantic similarity claims.',
                   requiredRetrievals: plan(),
                 }
               : {}),
@@ -227,13 +248,14 @@ export async function runAgent(options: {
         const missing = missingRecentRetrievals(plan(), completed);
         const missingNarrative =
           explanationRange && !missing.length
-            ? (
-                [
-                  'get_context',
-                  'get_metrics',
-                  'compare_baseline',
-                  'find_similar_sessions',
-                ] as const
+            ? (request.reconstructionRange
+                ? (['reconstruct_events'] as const)
+                : ([
+                    'get_context',
+                    'get_metrics',
+                    'compare_baseline',
+                    'find_similar_sessions',
+                  ] as const)
               ).filter(
                 (tool) =>
                   !evidence.some(

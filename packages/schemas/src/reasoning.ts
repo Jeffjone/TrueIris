@@ -22,6 +22,7 @@ export type CurrentState = z.infer<typeof currentStateSchema>;
 export const askQuerySchema = z
   .object({
     question: z.string().trim().min(1).max(1500),
+    reconstructionRange: timelineQuerySchema.optional(),
     source: dataSourceSchema,
     timezone: reasoningTimezoneSchema,
   })
@@ -29,7 +30,14 @@ export const askQuerySchema = z
 export type AskQuery = z.infer<typeof askQuerySchema>;
 export const askRequestSchema = askQuerySchema
   .extend({ current: currentStateSchema })
-  .strict();
+  .strict()
+  .refine(
+    (r) =>
+      !r.reconstructionRange ||
+      (r.question === 'What happened here?' &&
+        r.reconstructionRange.source === r.source),
+    'Reconstruction must use its selected source and question',
+  );
 export type AskRequest = z.infer<typeof askRequestSchema>;
 /** Canonical text command and its common punctuation variants share one bounded workflow. */
 export function isRecentExplanation(question: string): boolean {
@@ -45,6 +53,9 @@ export function recentExplanationRange(query: AskQuery, asOf: string) {
         source: query.source,
       })
     : null;
+}
+export function requestedExplanationRange(query: AskQuery, asOf: string) {
+  return query.reconstructionRange ?? recentExplanationRange(query, asOf);
 }
 export const historyRangeSchema = z
   .object({ start: z.iso.datetime(), end: z.iso.datetime() })
@@ -94,6 +105,7 @@ export const evidenceSchema = z
   .object({
     id: z.string().regex(/^e\d+$/),
     tool: z.enum([
+      'reconstruct_events',
       'get_current_state',
       'get_metrics',
       'get_context',
@@ -129,8 +141,13 @@ export const agentDataSchema = z
   .superRefine((data, ctx) => {
     const evidenceIds = new Set<string>(),
       facts = new Map<string, EvidenceFact>();
-    const expectedRange = recentExplanationRange(data.query, data.asOf);
+    const expectedRange = requestedExplanationRange(data.query, data.asOf);
     let valid =
+      (!data.query.reconstructionRange ||
+        (data.query.question === 'What happened here?' &&
+          data.query.reconstructionRange.source === data.query.source &&
+          Date.parse(data.query.reconstructionRange.end) <=
+            Date.parse(data.asOf) + 1000)) &&
       JSON.stringify(data.explanationRange) === JSON.stringify(expectedRange);
     for (const evidence of data.evidence) {
       if (evidenceIds.has(evidence.id)) valid = false;
@@ -192,3 +209,8 @@ export const agentResultSchema = z.discriminatedUnion('state', [
     .strict(),
 ]);
 export type AgentResult = z.infer<typeof agentResultSchema>;
+
+export const reconstructionQuerySchema = z
+  .object({ range: timelineQuerySchema, timezone: reasoningTimezoneSchema })
+  .strict();
+export type ReconstructionQuery = z.infer<typeof reconstructionQuerySchema>;

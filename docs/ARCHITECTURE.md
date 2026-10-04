@@ -169,3 +169,7 @@ A backend `ReasoningProvider` adapter uses the official Gemini API and an explic
 ## Feature 10 recent explanation
 
 The canonical text command and one-click Ask Iris action share the existing authenticated agent route and named IPC. A strict response carries its exact 30-minute source window, derived from the server request time. Gemini chooses required metrics/context/baseline/history calls and cited narrative facts; a bounded completion gate rejects missing categories, unrelated periods and guessed reference contexts. Request-local timeline/baseline caches keep the facts consistent without persistent storage. Pulse epoch comparisons are descriptive, qualify gaps and stop at session boundaries. An inline instance of the existing timeline chart loads the same window once and highlights it beside the narrative. No new capture, permission, migration or voice operation is added. See [recent explanation](RECENT_EXPLANATION.md).
+
+## Feature 16 selected event reconstruction
+
+A narrow reconstruction IPC operation projects a fixed question and source-bound selection into the existing Gemini agent. Its allowlisted tool reconstructs chronological first-party context, epoch, baseline and gap events. Gemini selects existing cited facts; the server verifies every answer sentence and pins the response range. Timeline reuses the shared agent-answer view. No new capture, persistent cache, database migration or provider is introduced. See [event reconstruction](EVENT_RECONSTRUCTION.md).

@@ -6,7 +6,10 @@ import {
 } from './reasoning';
 
 export const voiceProviderSchema = z.enum(['elevenlabs', 'mock']);
-export const voiceOptionsSchema = askQuerySchema.omit({ question: true });
+export const voiceOptionsSchema = askQuerySchema.pick({
+  source: true,
+  timezone: true,
+});
 export type VoiceOptions = z.infer<typeof voiceOptionsSchema>;
 export const voiceStartSchema = voiceOptionsSchema
   .extend({ sessionId: z.uuid(), current: currentStateSchema })

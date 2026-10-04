@@ -3,6 +3,7 @@ import type {
   VoiceAudio,
   VoiceEvent,
   VoiceSnapshot,
+  ReconstructionQuery,
   AskQuery,
   AgentResult,
   BaselineQuery,
@@ -53,6 +54,7 @@ export const VOICE_CHANNELS = {
 } as const;
 
 export const REASONING_CHANNELS = {
+  reconstruct: 'trueiris:reasoning:reconstruct',
   ask: 'trueiris:reasoning:ask',
   cancel: 'trueiris:reasoning:cancel',
 } as const;
@@ -68,6 +70,7 @@ export interface DesktopBridge {
   sendVoiceAudio(chunk: VoiceAudio): Promise<boolean>;
   finishVoice(sessionId: string): Promise<void>;
   onVoice(listener: (event: VoiceEvent) => void): () => void;
+  reconstructEvents(query: ReconstructionQuery): Promise<AgentResult>;
   askIris(query: AskQuery): Promise<AgentResult>;
   cancelIris(): Promise<void>;
   getStatus(): Promise<DesktopStatus>;

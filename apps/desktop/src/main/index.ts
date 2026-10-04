@@ -32,6 +32,7 @@ import {
   voiceOptionsSchema,
   voiceAudioSchema,
   type CurrentState,
+  reconstructionQuerySchema,
   askQuerySchema,
   contextOptionsSchema,
   activitySchema,
@@ -460,6 +461,19 @@ void app
     ipcMain.handle(SENSOR_CHANNELS.stop, (event) => {
       assertTrusted(event);
       return sensor.stop();
+    });
+    ipcMain.handle(REASONING_CHANNELS.reconstruct, (event, input: unknown) => {
+      assertTrusted(event);
+      if (managingData) throw new Error('Data action in progress');
+      const { range, timezone } = reconstructionQuerySchema.parse(input);
+      voice.stop();
+      return reasoning.ask({
+        question: 'What happened here?',
+        source: range.source,
+        timezone,
+        reconstructionRange: range,
+        current: currentState(),
+      });
     });
     ipcMain.handle(REASONING_CHANNELS.ask, (event, input: unknown) => {
       assertTrusted(event);

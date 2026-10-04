@@ -39,7 +39,7 @@ it('uses official HTTPS transport, tool schemas and header-only keys, preserving
   expect(options?.redirect).toBe('error');
   const body = JSON.parse(String(options?.body));
   expect(body.store).toBe(false);
-  expect(body.tools[0].functionDeclarations).toHaveLength(8);
+  expect(body.tools[0].functionDeclarations).toHaveLength(9);
   expect(body.toolConfig.functionCallingConfig.mode).toBe('ANY');
 });
 it('rejects malformed, blocked, oversized and unsuccessful responses without private diagnostics', async () => {

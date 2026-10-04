@@ -61,3 +61,7 @@ The dedicated action shares the same disclosure and provider privacy boundary as
 ## Feature 12 voice
 
 Start voice discloses microphone transport to ElevenLabs, question/evidence transport to Gemini and answer transport to ElevenLabs. PCM, partial/final transcripts and playback buffers are transient; TrueIris does not persist or log them. The microphone stops before reasoning/speech. Stop/interruption, clear, source/timezone changes, navigation/reload/crash, close/quit, suspend/lock and deletion release capture/transport. Gemini remains the reasoning owner and receives the same evidence projection as text. Provider retention policies still apply; no provider zero-retention guarantee is implied. See [voice privacy, controls and validation](ELEVENLABS_VOICE.md).
+
+## Feature 16 event reconstruction
+
+An explicit question about a selected timeline period sends verified recorded-event facts to Gemini. No window titles, raw media, task contents or inferred intentions are sent. Narratives and sequences remain in request/view memory and clear on selection/source/timezone/navigation changes. Existing sensing, saving, scoped history and cancellation boundaries apply. See [event reconstruction](EVENT_RECONSTRUCTION.md).

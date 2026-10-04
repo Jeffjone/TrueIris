@@ -65,7 +65,9 @@ export class ReasoningClient {
         result.data &&
         (result.data.query.question !== query.question ||
           result.data.query.source !== query.source ||
-          result.data.query.timezone !== query.timezone)
+          result.data.query.timezone !== query.timezone ||
+          JSON.stringify(result.data.query.reconstructionRange) !==
+            JSON.stringify(query.reconstructionRange))
       )
         return { state: 'unavailable', data: null };
       return result;
