@@ -1,3 +1,5 @@
+import { TigerDemo, type DemoStore } from './demo';
+export { TigerDemo, type DemoStore } from './demo';
 import { TigerExperiments, type ExperimentStore } from './experiments';
 export {
   TigerExperiments,
@@ -111,6 +113,7 @@ export function deserializeMeasurement(row: MeasurementRow): Measurement {
 const selectMeasurements = `SELECT m.*, s.started_at FROM measurements m JOIN sessions s ON s.id = m.session_id`;
 
 export interface MeasurementStore {
+  demo?: DemoStore;
   experiments?: ExperimentStore;
   health(): Promise<boolean>;
   similarSessions(userId: string, query: SimilarQuery): Promise<SimilarData>;
@@ -135,10 +138,14 @@ export interface MeasurementStore {
 export class TigerStore implements MeasurementStore {
   readonly pool: Pool;
   readonly experiments: ExperimentStore;
+  readonly demo: DemoStore;
   constructor(connectionString: string, caFile?: string) {
     this.pool = new Pool(databaseOptions(connectionString, caFile));
     // Never emit database errors containing SQL, parameters or connection details.
     this.pool.on('error', () => {});
+    this.demo = new TigerDemo(this.pool, (owner, work) =>
+      this.transaction(owner, work),
+    );
     this.experiments = new TigerExperiments(
       this.pool,
       (client) => ({
@@ -152,7 +159,7 @@ export class TigerStore implements MeasurementStore {
   async health() {
     try {
       const result = await this.pool
-        .query(`SELECT EXISTS (SELECT 1 FROM trueiris_migrations WHERE version = 4) AS ready,
+        .query(`SELECT EXISTS (SELECT 1 FROM trueiris_migrations WHERE version = 5) AS ready,
         EXISTS (SELECT 1 FROM timescaledb_information.hypertables WHERE hypertable_name = 'measurements' AND hypertable_schema = 'public') AS hypertable`);
       return (
         result.rows[0]?.ready === true && result.rows[0]?.hypertable === true
@@ -332,6 +339,9 @@ export class TigerStore implements MeasurementStore {
         'UPDATE users SET deleted_before=clock_timestamp() WHERE id=$1',
         [userId],
       );
+      await client.query('DELETE FROM demo_datasets WHERE user_id=$1', [
+        userId,
+      ]);
       await client.query('DELETE FROM experiments WHERE user_id=$1', [userId]);
       await client.query('DELETE FROM epochs WHERE user_id=$1', [userId]);
       await client.query('DELETE FROM measurements WHERE user_id=$1', [userId]);

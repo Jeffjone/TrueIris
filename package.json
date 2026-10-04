@@ -21,6 +21,8 @@
     "test:integration": "playwright test",
     "build": "pnpm -r build",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "seed:demo": "pnpm --filter @trueiris/db exec tsx src/seed-demo.ts",
+    "seed:clear": "pnpm --filter @trueiris/db exec tsx src/seed-demo.ts --clear",
     "db:migrate": "pnpm --filter @trueiris/db exec tsx src/migrate.ts",
     "test:database": "pnpm --filter @trueiris/db exec tsx src/verify.ts",
     "test:persistence": "TRUEIRIS_TEST_DATABASE=true playwright test tests/integration/storage-database.spec.ts",

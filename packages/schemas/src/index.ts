@@ -42,3 +42,4 @@ export * from './reasoning';
 
 export * from './voice';
 export * from './experiments';
+export * from './demo';

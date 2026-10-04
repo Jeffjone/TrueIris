@@ -18,7 +18,7 @@ Complete one feature, validate, review the diff, update documentation, commit, p
 | P1       | Patterns                            | Editorial evidence cards; sample counts, uncertainty, correlation language                                                                                |
 | P1       | Focus mode                          | Goal, timer, switches, baseline comparison, completion summary                                                                                            |
 | P1       | Event reconstruction (completed)    | Selected range → timestamped observations → grounded narrative                                                                                            |
-| P1       | Demo data                           | Deterministic multi-day history marked `demo_seed`; targeted clear operation                                                                              |
+| P1       | Demo data (completed)               | Deterministic multi-day history marked `demo_seed`; targeted clear operation                                                                              |
 | P1       | Demo mode                           | Explicit fallback with correct provenance; real sensing preferred; repeatable questions and visible diagnostic health                                     |
 | P1       | Vultr deployment                    | Docker runtime, TLS/auth, health/readiness, managed database, reproducible deployment instructions                                                        |
 | P2       | Experiments (completed)             | Conditions, minimum sessions, self-report; association vs insufficient evidence                                                                           |
@@ -38,7 +38,7 @@ Observability and privacy controls are implemented alongside each integration, w
 
 ## Deferred commands
 
-The working migration command is `pnpm db:migrate`. Add `pnpm seed:demo` and `pnpm seed:clear` when their implementations exist. Do not advertise successful no-op commands. API deployment and desktop installer creation are separate features from compiling application output.
+The working migration command is `pnpm db:migrate`. `pnpm seed:demo` and `pnpm seed:clear` now generate and clear dedicated source-separated samples. API deployment and desktop installer creation are separate features from compiling application output.
 
 ## Feature 2 verification
 
@@ -83,3 +83,7 @@ Selected timeline ranges can be reconstructed into timestamped first-party obser
 ## Feature 17 completed
 
 Experiments persist immutable hypotheses, two conditions, measurement thresholds and minimum sessions. Manually labeled completed periods carry optional focus ratings and evidence-backed baseline deviations, with independent eligibility per measure and four descriptive result states. Strict private capabilities, owner-serialized database operations, idempotent retries, private export, session removal and cascading history deletion preserve the existing architecture. Contract/analytics/API/main, built desktop and isolated real Timescale checks cover the feature. See [personal experiments](PERSONAL_EXPERIMENTS.md).
+
+## Feature 19 completed
+
+A deterministic seven-day/recent dataset stores observations, contexts, production epochs and a prepared experiment under a separate demo identity. Its source-scoped manifest links authored episode summaries and descriptive sample pattern cards to exact evidence. Refresh and clear are transactional; live/mock/foreign records are preserved. Unit/tool and isolated real Timescale checks cover the data lifecycle. Semantic embeddings remain deferred and the demo summary tool discloses keyword retrieval. See [demo data](DEMO_DATA.md).

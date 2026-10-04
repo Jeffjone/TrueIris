@@ -40,3 +40,13 @@ describe('environment validation', () => {
     expect(env.DATABASE_URL).toBe('postgresql://localhost/trueiris');
   });
 });
+it('keeps demo identity separate and rejects reusing the ordinary identity', () => {
+  const defaults = parseEnvironment({ TRUEIRIS_DEMO_MODE: 'true' });
+  expect(defaults.TRUEIRIS_DEMO_USER_ID).not.toBe(defaults.TRUEIRIS_USER_ID);
+  expect(() =>
+    parseEnvironment({
+      TRUEIRIS_DEMO_MODE: 'true',
+      TRUEIRIS_DEMO_USER_ID: defaults.TRUEIRIS_USER_ID,
+    }),
+  ).toThrow('Demo identity must differ');
+});

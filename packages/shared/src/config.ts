@@ -69,6 +69,9 @@ const envSchema = z.object({
     z.string().min(32).max(256).optional(),
   ),
   TRUEIRIS_USER_ID: z.uuid().default('00000000-0000-4000-8000-000000000001'),
+  TRUEIRIS_DEMO_USER_ID: z
+    .uuid()
+    .default('00000000-0000-4000-8000-000000000019'),
   DATABASE_CA_FILE: optionalSecret,
   DATABASE_URL: z.preprocess(
     (value) => (value === '' ? undefined : value),
@@ -93,6 +96,11 @@ export function parseEnvironment(input: Record<string, unknown>): Environment {
       `Invalid environment fields: ${[...new Set(result.error.issues.map((issue) => issue.path.join('.')))].join(', ')}`,
     );
   }
+  if (
+    result.data.TRUEIRIS_DEMO_MODE &&
+    result.data.TRUEIRIS_USER_ID === result.data.TRUEIRIS_DEMO_USER_ID
+  )
+    throw new Error('Demo identity must differ from ordinary identity');
   return result.data;
 }
 

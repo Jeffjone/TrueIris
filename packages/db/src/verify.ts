@@ -1,3 +1,4 @@
+import { verifyDemo } from './verify-demo';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import {
@@ -38,6 +39,9 @@ try {
   await migrate(store.pool);
   await migrate(store.pool);
   assert.equal(await store.health(), true);
+  const demoOwners = [randomUUID(), randomUUID()];
+  users.push(...demoOwners);
+  await verifyDemo(store, demoOwners);
   await verifyBaselines(store);
   const m = [measurement(0), measurement(1), measurement(2)];
   assert.deepEqual(await store.ingest(users[0]!, m), {
@@ -263,7 +267,7 @@ try {
   const location =
     error instanceof Error
       ? error.stack?.match(
-          /(?:verify(?:-context|-baseline|-experiments)?|timeline|baseline)\.ts:\d+:\d+/,
+          /(?:verify(?:-context|-baseline|-experiments|-demo)?|timeline|baseline)\.ts:\d+:\d+/,
         )?.[0]
       : undefined;
   if (typeof code === 'string' && /^[A-Z0-9_]{5,32}$/.test(code))

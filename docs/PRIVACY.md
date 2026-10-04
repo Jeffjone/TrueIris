@@ -69,3 +69,7 @@ An explicit question about a selected timeline period sends verified recorded-ev
 ## Feature 17 personal experiments
 
 Creating a definition or recording a labeled session explicitly saves the hypothesis, conditions, criteria, status, optional rating/notes and an immutable snapshot of derived physiological evidence. It starts no sensing and sends no content to Gemini or ElevenLabs. Session recording is an explicit save independent of automatic observation saving. The server owns identity; experiment sources remain separate. Notes and ratings are never logged. Individual removal and global history deletion cover experiment records and snapshots; the history deletion watermark prevents old-range replay. Native JSON export includes this private metadata, disables automatic saving and uses private permissions. Previously exported files stay under your control. See [experiment controls, evidence and limitations](PERSONAL_EXPERIMENTS.md).
+
+## Feature 19 generated demonstration history
+
+Seeding uses a separate demo identity and fixed `demo_seed` provenance. It stores only generated vitals, desktop metadata without titles, authored sample summaries/patterns and fictional experiment ratings. No camera, provider call, user prompt or personal recording enters the generator. Clearing targets only that source and owner; refresh replaces only managed sample artifacts. Keyword retrieval of demo summaries is explicitly labeled and never returns real episodic memories. See [demo data controls](DEMO_DATA.md).

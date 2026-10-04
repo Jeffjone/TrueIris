@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   activitySchema,
+  demoDatasetSchema,
   baselineDataSchema,
   baselineQuerySchema,
   timelineDataSchema,
@@ -76,7 +77,7 @@ const descriptions: Record<ToolName, string> = {
   find_similar_sessions:
     'Recent activity-matched sensing periods in an earlier bounded historical range. Activity matching only; no semantic or causal/physiological similarity claim.',
   search_memories:
-    'Reports unavailable until semantic memory is implemented; never fabricates remembered episodes.',
+    'For demo_seed only, retrieves authored sample episode summaries by keyword. Real semantic embeddings remain unavailable; never fabricates remembered episodes.',
   respond:
     'Finish by choosing ordered factIds from retrieved evidence. All answer sentences come from these verified facts. Choose facts relevant to the question; include missing-data/limited evidence. Never invent factIds.',
 };
@@ -104,7 +105,10 @@ export async function executeTool(
   name: Exclude<ToolName, 'respond'>,
   args: unknown,
   options: {
-    store: Pick<MeasurementStore, 'timeline' | 'baselines' | 'similarSessions'>;
+    store: Pick<
+      MeasurementStore,
+      'timeline' | 'baselines' | 'similarSessions' | 'demo'
+    >;
     userId: string;
     request: AskRequest;
     asOf: string;
@@ -495,12 +499,47 @@ export async function executeTool(
       }
       break;
     }
-    case 'search_memories':
+    case 'search_memories': {
+      if (request.source === 'demo_seed' && store.demo) {
+        const input = toolSchemas.search_memories.parse(args);
+        const raw = await store.demo.get(userId);
+        const data = raw ? demoDatasetSchema.parse(raw) : null;
+        if (data) {
+          result.title = 'Seeded episode summaries';
+          caution(
+            'These are authored sample summaries from generated demo_seed history. Retrieval matches words only; semantic embeddings and real episodic memory are not implemented.',
+          );
+          const words = input.query.toLowerCase().match(/[a-z]{3,}/g) ?? [];
+          const matches = data.episodes
+            .filter((e) => Date.parse(e.range.end) <= Date.parse(asOf))
+            .map((e) => ({
+              episode: e,
+              score: words.filter((word) =>
+                (e.title + ' ' + e.tags.join(' ')).toLowerCase().includes(word),
+              ).length,
+            }))
+            .filter((e) => e.score > 0)
+            .sort(
+              (a, b) =>
+                b.score - a.score ||
+                b.episode.range.start.localeCompare(a.episode.range.start),
+            )
+            .slice(0, input.limit);
+          for (const { episode } of matches)
+            fact(episode.summary, episode.pulse, episode.range);
+          if (!matches.length) {
+            result.status = 'empty';
+            caution('No sample episode summary matched these words.');
+          }
+          break;
+        }
+      }
       result.status = 'unavailable';
       caution(
         'Semantic episodic memory is not available yet. No remembered episodes or semantic matches can be claimed.',
       );
       break;
+    }
   }
   signal.throwIfAborted();
   const validated = evidenceSchema.parse(result);

@@ -177,3 +177,7 @@ A narrow reconstruction IPC operation projects a fixed question and source-bound
 ## Feature 17 personal experiments
 
 Migration 4 adds owner/source-scoped experiment definitions and labeled sessions, with cascading deletion. The authenticated action route applies strict shared contracts and pure descriptive analytics; the server computes physiological metrics from accepted matching activity/source history and earlier baselines. Owner-row locks serialize mutations with ingestion/deletion, and evidence queries reuse the held transaction connection. Immutable criteria and snapshots preserve what was tested; missing evidence stays null. Named main/preload capabilities provide bounded transport and atomic native JSON export. The explicit in-memory adapter is test-only; no provider or sensing flow is invoked. See [personal experiments](PERSONAL_EXPERIMENTS.md) for eligibility and descriptive comparison rules.
+
+## Feature 19 demo data
+
+Migration 5 stores a `demo_seed` manifest under the dedicated demo identity. A deterministic generator validates measurements/context and uses production epoch analytics. Parameterized bulk insertion and existing baseline queries run in one owner-locked transaction. Source/owner-bound refresh/clear protect real captures and unrelated records. The manifest contains evidence-linked illustrative patterns, authored episode summaries and prepared experiment IDs. Demo-only keyword summary retrieval is distinct from deferred semantic embeddings. See [demo data](DEMO_DATA.md).

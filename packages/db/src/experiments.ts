@@ -76,7 +76,7 @@ function duplicate(sessions: ExperimentSession[], input: ExperimentRecord) {
   if (!overlap && sessions.length >= 200) throw new ExperimentConflict();
   return overlap;
 }
-async function measuredSession(
+export async function measuredSession(
   userId: string,
   experiment: Experiment,
   input: ExperimentRecord,

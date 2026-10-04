@@ -121,6 +121,15 @@ export async function migrate(pool: Pool) {
       INSERT INTO trueiris_migrations(version) VALUES(4);
     `);
     }
+    const demo = await client.query(
+      'SELECT version FROM trueiris_migrations WHERE version=5',
+    );
+    if (!demo.rowCount) {
+      await client.query(`CREATE TABLE demo_datasets (
+        user_id uuid PRIMARY KEY REFERENCES users(id),
+        source text NOT NULL CHECK(source='demo_seed'),data jsonb NOT NULL
+      ); INSERT INTO trueiris_migrations(version) VALUES(5);`);
+    }
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');
