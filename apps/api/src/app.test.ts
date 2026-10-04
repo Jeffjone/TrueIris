@@ -47,6 +47,7 @@ const measurement = {
 };
 function fakeStore(): MeasurementStore {
   return {
+    similarSessions: vi.fn(),
     baselines: vi.fn(),
     timeline: vi.fn(),
     ingestContext: vi.fn(async () => ({ accepted: 1, duplicates: 0 })),
@@ -539,5 +540,59 @@ it('authenticates, scopes and strictly bounds baseline comparisons', async () =>
     expect(failed.body).not.toContain('private SQL');
   } finally {
     await app.close();
+  }
+});
+
+import { MockReasoningProvider } from './agents/provider';
+import { createReasoningFixture, fixtureRequest } from './agents/fixtures';
+it('protects and validates questions, scopes tools, and declares unavailable reasoning without fallback', async () => {
+  const { store, scopes } = createReasoningFixture();
+  const app = buildApp('silent', {
+    store,
+    token,
+    userId,
+    reasoning: new MockReasoningProvider(),
+  });
+  try {
+    const ask = (payload: unknown, authorization = `Bearer ${token}`) =>
+      app.inject({
+        method: 'POST',
+        url: '/agent/ask',
+        headers: { authorization, 'content-type': 'application/json' },
+        payload: JSON.stringify(payload),
+      });
+    expect((await ask(fixtureRequest, 'Bearer forged')).statusCode).toBe(401);
+    for (const patch of [
+      { userId: 'forged' },
+      { question: ' ' },
+      { question: 'x'.repeat(1501) },
+      { timezone: 'invalid' },
+      { current: { ...fixtureRequest.current, windowTitle: 'private' } },
+    ])
+      expect((await ask({ ...fixtureRequest, ...patch })).statusCode).toBe(400);
+    const response = await ask(fixtureRequest);
+    expect(response.statusCode).toBe(200);
+    expect(response.json().data.provider).toBe('mock');
+    expect(
+      scopes.every((s) => s.userId === userId && s.range.source === 'mock'),
+    ).toBe(true);
+    expect(response.body).not.toContain('PRIVATE TITLE');
+  } finally {
+    await app.close();
+  }
+  const missing = buildApp('silent', { store: fakeStore(), token, userId });
+  try {
+    expect(
+      (
+        await missing.inject({
+          method: 'POST',
+          url: '/agent/ask',
+          headers: { authorization: `Bearer ${token}` },
+          payload: fixtureRequest,
+        })
+      ).json(),
+    ).toEqual({ state: 'not_configured', data: null });
+  } finally {
+    await missing.close();
   }
 });

@@ -48,3 +48,7 @@ The context JSON Lines export is separate from the measurement export and turns 
 ## Feature 8 historical comparison
 
 Personal baselines query already saved physiology and, for activity comparisons, recorded manual labels or confident unambiguous desktop intervals. No new capture begins. The server owns identity, source datasets stay separate, and selected readings are excluded from historical baselines. Results remain in renderer memory and clear when selections/context change. Existing deletion removes all comparison inputs; no separate baseline cache is persisted. Confidence is an evidence-support heuristic, with explicit insufficient-history states. See [personal baselines](PERSONAL_BASELINES.md).
+
+## Feature 9 questions and evidence
+
+Sending a question from Ask Iris shares its text and requested projected evidence with Gemini, with disclosure before sending. No capture starts. Requested summaries can include accepted metrics, historical context application names, manual labels and baselines. Window titles, classification reasons, frames, screenshots and private credentials/owner IDs are excluded. TrueIris does not log or persist questions, answers, tool transcripts or thought signatures. They remain in request/view memory; navigation/reload/source changes/clear discard results, cancellation stops orchestration, and deletion cancels requests and removes history inputs. The provider is explicit, with no mock fallback. See [Gemini privacy and limits](GEMINI_AGENT.md).

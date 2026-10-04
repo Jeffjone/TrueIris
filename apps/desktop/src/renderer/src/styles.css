@@ -983,3 +983,52 @@ h2 {
     gap: 4px;
   }
 }
+
+.ask-label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.ask-input {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.6;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  resize: vertical;
+  background: #fafbf6;
+  color: #29372e;
+  margin-bottom: 16px;
+}
+.ask-input:focus-visible {
+  outline: 2px solid #527960;
+  outline-offset: 3px;
+}
+.iris-narrative {
+  max-width: 780px;
+  font-size: 17px;
+  line-height: 1.8;
+}
+.iris-evidence {
+  display: grid;
+  gap: 14px;
+}
+.iris-evidence-card {
+  border: 1px solid var(--border);
+  padding: 18px;
+  border-radius: 10px;
+  overflow-wrap: anywhere;
+}
+.iris-evidence-card h4 {
+  margin: 0 0 8px;
+  font-weight: 500;
+}
+.iris-evidence-card ul {
+  padding-left: 20px;
+  font-size: 12px;
+  line-height: 1.7;
+}

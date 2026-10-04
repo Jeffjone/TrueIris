@@ -1,7 +1,11 @@
+import { AgentService } from './agents/agent';
+import type { ReasoningProvider } from './agents/provider';
 import Fastify, { LogController } from 'fastify';
 import { timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import {
+  askRequestSchema,
+  agentResultSchema,
   baselineQuerySchema,
   baselineDataSchema,
   healthSchema,
@@ -19,6 +23,7 @@ import { loggerOptions } from '@trueiris/shared/logging';
 import { SessionConflict, type MeasurementStore } from '@trueiris/db';
 
 interface ApiOptions {
+  reasoning?: ReasoningProvider;
   store?: MeasurementStore;
   token?: string;
   userId?: string;
@@ -30,7 +35,11 @@ export function buildApp(logLevel = 'info', options: ApiOptions = {}) {
     logController: new LogController({ disableRequestLogging: true }),
     bodyLimit: 256 * 1024,
   });
-  const { store, token, userId } = options;
+  const { store, token, userId, reasoning } = options;
+  const agent =
+    store && userId && reasoning
+      ? new AgentService(reasoning, store, userId)
+      : null;
   let windowStart = Date.now();
   let requests = 0;
   app.setErrorHandler((error, _request, reply) => {
@@ -45,7 +54,11 @@ export function buildApp(logLevel = 'info', options: ApiOptions = {}) {
       timestamp: new Date().toISOString(),
       integrations: {
         database: store && (await store.health()) ? 'ready' : 'unavailable',
-        reasoning: 'not_implemented',
+        reasoning: reasoning
+          ? reasoning.configured
+            ? 'ready'
+            : 'unavailable'
+          : 'not_implemented',
         voice: 'not_implemented',
       },
     }),
@@ -135,6 +148,24 @@ export function buildApp(logLevel = 'info', options: ApiOptions = {}) {
         return reply.code(503).send({ error: 'Context export is unavailable' });
       }
     });
+    privateApp.post('/agent/ask', async (request, reply) => {
+      const parsed = askRequestSchema.safeParse(request.body);
+      if (!parsed.success)
+        return reply.code(400).send({ error: 'Invalid question' });
+      if (!agent) return { state: 'not_configured', data: null };
+      const controller = new AbortController();
+      const closed = () => {
+        if (!reply.raw.writableEnded) controller.abort();
+      };
+      reply.raw.on('close', closed);
+      try {
+        return agentResultSchema.parse(
+          await agent.ask(parsed.data, controller.signal),
+        );
+      } finally {
+        reply.raw.off('close', closed);
+      }
+    });
     privateApp.post('/baselines/compare', async (request, reply) => {
       const query = baselineQuerySchema.safeParse(request.body);
       if (!query.success)
@@ -176,6 +207,7 @@ export function buildApp(logLevel = 'info', options: ApiOptions = {}) {
     });
     privateApp.delete('/data', async (_request, reply) => {
       try {
+        agent?.cancel();
         await store!.deleteData(userId!);
         return reply.code(204).send();
       } catch {
@@ -184,6 +216,7 @@ export function buildApp(logLevel = 'info', options: ApiOptions = {}) {
     });
   });
   app.addHook('onClose', async () => {
+    agent?.cancel();
     await store?.close();
   });
   return app;

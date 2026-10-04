@@ -15,6 +15,7 @@ export async function launchSensorDesktop(
     args: [resolve('apps/desktop')],
     env: {
       ...environment,
+      GEMINI_API_KEY: '',
       PRESAGE_API_KEY: '',
       TRUEIRIS_INGEST_TOKEN: '',
       DATABASE_URL: '',

@@ -63,3 +63,7 @@ Desktop context adds explicit independent capture, foreground application/switch
 ## Feature 8 verification
 
 Activity and local time-of-day baselines use earlier quality-filtered history with explicit sample/date support. Timeline selected periods expose comparisons and insufficient-history/no-current-data states through a private named bridge and scoped authenticated API. Arithmetic/contracts/API, built desktop and isolated real Timescale checks cover the feature. See [personal baselines](PERSONAL_BASELINES.md). Feature 7 screen capture remains unimplemented and off.
+
+## Feature 9 verification
+
+Gemini selects validated read-only tools and assembles answers from cited facts over scoped metrics/context/baselines and recent activity-matched sensing periods. Explicit mock reasoning supports offline tests; semantic memory reports unavailable pending Feature 11. Ask Iris text provides the initial validation surface with cancellation and provider/source labels. Unit/API/main, built desktop, real scoped SQL and opt-in live Gemini synthetic-fixture checks cover the feature. The dedicated last-30-minute flow and highlighted evidence are Feature 10. See [Gemini agent](GEMINI_AGENT.md).

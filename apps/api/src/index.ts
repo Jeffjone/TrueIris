@@ -2,12 +2,20 @@ import {
   loadWorkspaceEnvironment,
   parseEnvironment,
 } from '@trueiris/shared/config';
+import {
+  GeminiReasoningProvider,
+  MockReasoningProvider,
+} from './agents/provider';
 import { buildApp } from './app';
 import { TigerStore } from '@trueiris/db';
 
 loadWorkspaceEnvironment();
 const env = parseEnvironment(process.env);
 const app = buildApp(env.LOG_LEVEL, {
+  reasoning:
+    env.TRUEIRIS_REASONING_PROVIDER === 'mock'
+      ? new MockReasoningProvider()
+      : new GeminiReasoningProvider(env.GEMINI_API_KEY, env.GEMINI_MODEL),
   ...(env.DATABASE_URL
     ? { store: new TigerStore(env.DATABASE_URL, env.DATABASE_CA_FILE) }
     : {}),

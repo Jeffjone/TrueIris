@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import {
+  REASONING_CHANNELS,
   CONTEXT_CHANNELS,
   STATUS_CHANNEL,
   SENSOR_CHANNELS,
@@ -10,6 +11,8 @@ import {
   type DesktopBridge,
 } from '@trueiris/shared';
 import {
+  askQuerySchema,
+  agentResultSchema,
   contextSnapshotSchema,
   contextOptionsSchema,
   desktopStatusSchema,
@@ -26,6 +29,16 @@ import {
 } from '@trueiris/schemas';
 
 const bridge: DesktopBridge = {
+  askIris: async (query) =>
+    agentResultSchema.parse(
+      await ipcRenderer.invoke(
+        REASONING_CHANNELS.ask,
+        askQuerySchema.parse(query),
+      ),
+    ),
+  cancelIris: async () => {
+    await ipcRenderer.invoke(REASONING_CHANNELS.cancel);
+  },
   getStatus: async () =>
     desktopStatusSchema.parse(await ipcRenderer.invoke(STATUS_CHANNEL)),
   getStorage: async () =>

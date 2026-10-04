@@ -45,7 +45,7 @@ flowchart TD
   ANSWER --> TTS[ElevenLabs streaming TTS]
 ```
 
-Sensor events, opt-in authenticated persistence and pure 30-second epoch analytics are implemented. The Today timeline and optional recorded manual activity are implemented. Opt-in OS context and interval history are implemented in Feature 6. Personal activity/time-of-day baselines are implemented in Feature 8; memory, agent and voice remain planned.
+Sensor events, opt-in authenticated persistence and pure 30-second epoch analytics are implemented. The Today timeline and optional recorded manual activity are implemented. Opt-in OS context and interval history are implemented in Feature 6. Personal activity/time-of-day baselines are implemented in Feature 8; the Gemini tool-calling agent is implemented in Feature 9; semantic memory and voice remain planned.
 
 ## Workspace ownership
 
@@ -161,3 +161,7 @@ Migration 3 adds context sessions and immutable intervals with owner/source/orig
 ## Feature 8 personal baselines
 
 A named validated desktop capability and authenticated scoped comparison endpoint query raw history for contextual personal references. Quality-filtered 30-second per-session bucket means need sufficient samples across multiple local dates; current periods are excluded from historical evidence. Pure analytics calculate signed differences, percentages, standardized deviation and an explicit evidence-support heuristic. Results are transient, source separated, timezone aware and do not interpret physiological values medically. No new table or capture is added. See [personal baselines](PERSONAL_BASELINES.md) for method, contracts and validation.
+
+## Feature 9 Gemini tools
+
+A backend `ReasoningProvider` adapter uses the official Gemini API and an explicit deterministic mock. An allowlisted Zod tool registry projects bounded, scoped summaries over timeline, baseline and historical session services. The model chooses retrieval steps and cited facts; final prose is assembled from validated evidence templates. A named private desktop capability supplies a projection of current state and supports cancellation; Ask Iris renders provider/source labels, linked evidence and partial/failure states. Questions, transcripts and answers are transient; titles, frames and credentials never enter prompts. No schema migration is needed. See [agent contracts, setup, limits and verification](GEMINI_AGENT.md).

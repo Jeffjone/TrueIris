@@ -217,6 +217,30 @@ export async function verifyBaselines(store: TigerStore) {
       (await store.baselines(user, emptyCurrent)).comparisons[0].state,
       'no_current_data',
     );
+    const similarQuery = {
+      range: { start: '2026-03-06T14:00:00.000Z', end: query.range.start },
+      source: 'mock' as const,
+      activity: 'Coding' as const,
+      limit: 2,
+    };
+    const matched = await store.similarSessions(user, similarQuery);
+    assert.equal(matched.sessions.length, 2);
+    assert.equal(matched.sessions[0]!.pulse, 74);
+    assert.equal(matched.sessions[0]!.count, 210);
+    assert.equal(
+      (await store.similarSessions(foreign, similarQuery)).sessions.length,
+      0,
+    );
+    assert.equal(
+      (await store.similarSessions(user, { ...similarQuery, source: 'live' }))
+        .sessions.length,
+      0,
+    );
+    const clipped = await store.similarSessions(user, {
+      ...similarQuery,
+      range: { start: query.range.start, end: '2026-03-10T14:00:00.500Z' },
+    });
+    assert.equal(clipped.sessions[0]!.range.end, '2026-03-10T14:00:00.500Z');
     await store.deleteData(user);
     assert.equal(
       (await store.baselines(user, query)).comparisons[0].sampleCount,

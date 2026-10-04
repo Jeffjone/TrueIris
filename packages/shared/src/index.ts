@@ -1,4 +1,6 @@
 import type {
+  AskQuery,
+  AgentResult,
   BaselineQuery,
   BaselineResult,
   ContextOptions,
@@ -37,12 +39,18 @@ export const CONTEXT_CHANNELS = {
   update: 'trueiris:context:update',
 } as const;
 
+export const REASONING_CHANNELS = {
+  ask: 'trueiris:reasoning:ask',
+  cancel: 'trueiris:reasoning:cancel',
+} as const;
 export const BASELINE_CHANNEL = 'trueiris:baselines:get';
 export const TIMELINE_CHANNEL = 'trueiris:timeline:get';
 export const ACTIVITY_CHANNEL = 'trueiris:activity:set';
 
 /** Named, validated capabilities only; never expose generic IPC or credentials. */
 export interface DesktopBridge {
+  askIris(query: AskQuery): Promise<AgentResult>;
+  cancelIris(): Promise<void>;
   getStatus(): Promise<DesktopStatus>;
   getStorage(): Promise<StorageStatus>;
   setStorageEnabled(enabled: boolean): Promise<StorageStatus>;

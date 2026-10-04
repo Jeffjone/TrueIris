@@ -13,6 +13,7 @@ test('desktop context has independent consent, optional titles, manual override,
   test.setTimeout(60_000);
   const intervals = new Map<string, ContextInterval>();
   const store: MeasurementStore = {
+    similarSessions: async (_user, query) => ({ query, sessions: [] }),
     baselines: async () => {
       throw new Error('Unavailable');
     },

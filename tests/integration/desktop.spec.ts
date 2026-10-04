@@ -44,6 +44,8 @@ for (const connected of [true, false]) {
       }));
       expect(isolation).toEqual({
         bridgeKeys: [
+          'askIris',
+          'cancelIris',
           'getStatus',
           'getStorage',
           'setStorageEnabled',

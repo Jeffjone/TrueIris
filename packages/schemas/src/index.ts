@@ -38,3 +38,4 @@ export * from './timeline';
 
 export * from './context';
 export * from './baseline';
+export * from './reasoning';

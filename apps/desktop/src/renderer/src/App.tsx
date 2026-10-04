@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSensor, sensorLabel, type SensorControls } from './sensor';
 import { LiveView } from './live/LiveView';
+import { AskView } from './ask/AskView';
 import { TimelineView } from './timeline/TimelineView';
 import type { Activity } from './live/presentation';
 import {
@@ -145,7 +146,13 @@ function Settings({
         {['Gemini', 'ElevenLabs'].map((label) => (
           <div className="settings-row" key={label}>
             <span>{label}</span>
-            <span>Not integrated</span>
+            <span>
+              {label === 'Gemini'
+                ? status?.integrations?.reasoning === 'ready'
+                  ? 'Configured · checked when you ask'
+                  : 'Unavailable · check backend configuration'
+                : 'Not integrated'}
+            </span>
           </div>
         ))}
         <p className="muted">
@@ -275,15 +282,7 @@ export function App() {
               />
             }
           />
-          <Route
-            path="/ask-iris"
-            element={
-              <EmptyPage
-                title="Ask about your day."
-                description="Once your measurements and context are connected, Iris will help you explore them through conversation."
-              />
-            }
-          />
+          <Route path="/ask-iris" element={<AskView />} />
           <Route
             path="/experiments"
             element={

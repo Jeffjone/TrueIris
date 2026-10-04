@@ -17,6 +17,11 @@ const envSchema = z.object({
       'Must use HTTP or HTTPS',
     )
     .default('http://127.0.0.1:3001'),
+  TRUEIRIS_REASONING_PROVIDER: z.enum(['gemini', 'mock']).default('gemini'),
+  GEMINI_MODEL: z
+    .string()
+    .regex(/^gemini-[a-z0-9.-]{1,80}$/)
+    .default('gemini-3.8-flash'),
   TRUEIRIS_CONTEXT_PROVIDER: z.enum(['desktop', 'mock']).default('desktop'),
   TRUEIRIS_SENSOR_PROVIDER: z.enum(['presage', 'mock']).default('presage'),
   TRUEIRIS_MOCK_SENSOR_SCENARIO: z

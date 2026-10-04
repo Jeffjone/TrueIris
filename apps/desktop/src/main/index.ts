@@ -12,6 +12,7 @@ import {
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
+  REASONING_CHANNELS,
   CONTEXT_CHANNELS,
   STATUS_CHANNEL,
   SENSOR_CHANNELS,
@@ -27,6 +28,7 @@ import {
 import { createLogger } from '@trueiris/shared/logging';
 import { getDesktopStatus } from './status';
 import {
+  askQuerySchema,
   contextOptionsSchema,
   activitySchema,
   baselineQuerySchema,
@@ -42,6 +44,7 @@ import {
   storageConfigured,
 } from './storage/queue';
 import { exportMeasurements } from './storage/files';
+import { ReasoningClient } from './reasoning';
 import { getBaselines } from './baseline';
 import { getTimeline } from './timeline';
 import { ContextController } from './context/controller';
@@ -52,6 +55,10 @@ import { PresageSensorProvider } from './sensor/presage';
 
 if (!app.isPackaged) loadWorkspaceEnvironment();
 const env = parseEnvironment(process.env);
+const reasoning = new ReasoningClient(
+  env.TRUEIRIS_API_URL,
+  env.TRUEIRIS_INGEST_TOKEN,
+);
 const logger = createLogger('trueiris-desktop', env.LOG_LEVEL);
 const directory = dirname(fileURLToPath(import.meta.url));
 let mainWindow: BrowserWindow | null = null;
@@ -196,6 +203,7 @@ function createWindow() {
   );
   window.webContents.on('render-process-gone', (_event, details) => {
     logger.error({ event: 'renderer_stopped', reason: details.reason });
+    reasoning.cancel();
     activity = null;
     context?.setManual(null);
     context?.stop();
@@ -203,6 +211,7 @@ function createWindow() {
   });
   window.webContents.on('did-start-navigation', (details) => {
     if (details.isMainFrame && !details.isSameDocument) {
+      reasoning.cancel();
       activity = null;
       context?.setManual(null);
       context?.stop();
@@ -215,6 +224,7 @@ function createWindow() {
   window.once('ready-to-show', () => window.show());
   window.once('closed', () => {
     mainWindow = null;
+    reasoning.cancel();
     activity = null;
     context?.setManual(null);
     context?.stop();
@@ -347,6 +357,29 @@ void app
       assertTrusted(event);
       return sensor.stop();
     });
+    ipcMain.handle(REASONING_CHANNELS.ask, (event, input: unknown) => {
+      assertTrusted(event);
+      if (managingData) throw new Error('Data action in progress');
+      const query = askQuerySchema.parse(input),
+        sensed = sensor.get(),
+        desktop = context.get();
+      return reasoning.ask({
+        ...query,
+        current: {
+          sensor: sensed.phase,
+          reading: sensed.reading,
+          context: desktop.phase,
+          contextSource: desktop.provider === 'mock' ? 'mock' : 'live',
+          application: desktop.application?.name ?? null,
+          activity,
+          saving: storageStatus().enabled,
+        },
+      });
+    });
+    ipcMain.handle(REASONING_CHANNELS.cancel, (event) => {
+      assertTrusted(event);
+      reasoning.cancel();
+    });
     ipcMain.handle(BASELINE_CHANNEL, (event, input: unknown) => {
       assertTrusted(event);
       return getBaselines(
@@ -442,6 +475,7 @@ void app
           cancelId: 0,
         });
         if (confirmation.response !== 1) return 'cancelled';
+        reasoning.cancel();
         await sensor.stop();
         context.stop();
         await enableSaving(false);
@@ -475,6 +509,7 @@ app.on('window-all-closed', () => {
 
 let quitting = false;
 app.on('before-quit', (event) => {
+  reasoning.cancel();
   if (quitting || !sensor) return;
   event.preventDefault();
   quitting = true;

@@ -115,6 +115,7 @@ test('built timeline separates sources, selects points and periods, zooms, shows
   const requests: TimelineQuery[] = [];
   const fixtureNow = Date.now();
   const store: MeasurementStore = {
+    similarSessions: async (_user, query) => ({ query, sessions: [] }),
     baselines: async (_user, query) => ({
       query,
       historyStart: new Date(
