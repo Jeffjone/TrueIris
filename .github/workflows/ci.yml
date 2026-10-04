@@ -27,27 +27,6 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
-      - name: Build and smoke-test production API container
-        run: |
-          install -m 600 deploy/api.env.example deploy/api.env
-          TRUEIRIS_DOMAIN=example.invalid docker compose config --quiet
-          rm deploy/api.env
-          docker run --rm -e TRUEIRIS_DOMAIN=example.invalid -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2.10.2-alpine caddy validate --config /etc/caddy/Caddyfile
-          docker build -t trueiris-api:test .
-          docker run -d --name trueiris-api-test -p 127.0.0.1:3108:3001 -e TRUEIRIS_INGEST_TOKEN=ci-only-private-token-000000000000 trueiris-api:test
-          trap 'docker rm -f trueiris-api-test' EXIT
-          for attempt in $(seq 1 30); do
-            if curl --fail --silent http://127.0.0.1:3108/health > /dev/null; then break; fi
-            sleep 2
-          done
-          node --input-type=module <<'NODE'
-          import assert from 'node:assert/strict';
-          const response = await fetch('http://127.0.0.1:3108/health');
-          assert.equal(response.status, 200);
-          assert.equal((await response.json()).service, 'trueiris-api');
-          assert.equal((await fetch('http://127.0.0.1:3108/data/export')).status, 401);
-          assert.equal((await fetch('http://127.0.0.1:3108/voice/stream')).status, 401);
-          NODE
       - run: pnpm test:database
         env:
           DATABASE_URL: postgresql://postgres:trueiris-ci-only@127.0.0.1:5432/trueiris_test

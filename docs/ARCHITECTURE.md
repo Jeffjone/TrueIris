@@ -185,7 +185,3 @@ Migration 5 stores a `demo_seed` manifest under the dedicated demo identity. A d
 ## Feature 20 dedicated presentation
 
 The explicit demo launcher sets the mode for API and desktop. API token scope switches to the separate demo owner and a single-flight preparation service seeds once on startup; named bounded capabilities fetch/prepare its manifest. Private HTTP/WebSocket mode assertions reject mixed deployments. Presentation routes default to generated history/UTC and use evidence-linked sample artifacts; detailed health/provider controls live in Settings. Sensor lifecycle guards tear down failed real streams before any demo-only mock replacement and preserve source/session identity. No provider/database fallback is added outside the explicit mode. See [demo mode](DEMO_MODE.md).
-
-## Feature 21 deployment packaging
-
-A multi-stage Node 24 image builds the existing API and explicit migration entry point, then deploys a portable production dependency graph under a non-root runtime. Compose publishes only Caddy's HTTP/HTTPS ports; the API has a private container port, strict Tiger TLS, runtime-only credentials and liveness health checks. Caddy preserves HTTP authentication and WSS voice upgrades. Analytics remain in-process; local capture remains in Electron. See [Vultr deployment](VULTR_DEPLOYMENT.md) for deployment and live acceptance steps.
