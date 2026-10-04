@@ -31,7 +31,8 @@
     "test:demo": "TRUEIRIS_TEST_DATABASE=true playwright test tests/integration/demo.spec.ts",
     "test:persistence": "TRUEIRIS_TEST_DATABASE=true playwright test tests/integration/storage-database.spec.ts",
     "test:gemini": "pnpm --filter @trueiris/api exec tsx src/agents/verify-live.ts",
-    "test:voice": "pnpm --filter @trueiris/api exec tsx src/voice/verify-live.ts"
+    "test:voice": "pnpm --filter @trueiris/api exec tsx src/voice/verify-live.ts",
+    "capture:demo": "pnpm --filter @trueiris/api exec tsx ../../scripts/capture-demo.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

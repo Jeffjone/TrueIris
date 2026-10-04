@@ -16,3 +16,6 @@ data/
 captures/
 recordings/
 screenshots/
+
+# Generated presentation media
+/demo-deliverables/
