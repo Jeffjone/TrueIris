@@ -7,3 +7,10 @@ allowBuilds:
   esbuild: true
   koffi: true
   protobufjs: true
+
+minimumReleaseAgeExclude:
+  - electron@44.11.3
+
+# typescript-estree still requests minimatch 10, which has no patched release.
+overrides:
+  '@typescript-eslint/typescript-estree>minimatch': ^11.0.1

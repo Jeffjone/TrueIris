@@ -97,6 +97,8 @@ Camera sensing requires an explicit start and operating-system permission. Its s
 - **Desktop context unavailable:** app detection supports macOS, Windows and X11 with `xprop`; Wayland/headless sessions report unsupported. macOS window titles need a separate opt-in and Accessibility permission. See [context setup](docs/DESKTOP_CONTEXT.md).
 - **No saved history:** check database readiness, migrations and the saving control in Settings. See [Tiger Data troubleshooting](docs/TIGER_DATA_SETUP.md). Choose the matching source and timezone in Timeline. See [timeline behavior](docs/TIMELINE.md). See [voice setup and text fallback](docs/ELEVENLABS_VOICE.md).
 
+For patched dependency versions and free audit commands, see [dependency security maintenance](docs/DEPENDENCY_SECURITY.md).
+
 ## Feature workflow
 
 For every completed feature: format, lint, typecheck, run relevant tests, build, inspect the diff, update documentation, commit, push, and verify `git status`. Do not commit credentials, raw captures, generated dependencies, or private user data. See sections 3 and 50 of the master brief.
